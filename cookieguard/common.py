@@ -16,7 +16,7 @@ if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     APP_ROOT = Path(sys._MEIPASS)
 else:
     APP_ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 
 _perm_done: set = set()
 
@@ -109,6 +109,10 @@ DEFAULT_CONFIG = {
     "webhook_url": "",
     "killswitch_activo": False,
     "directorios_copias_sospechosas": [],
+    "iocs_auto_actualizar": True,
+    "iocs_feed_url": "https://raw.githubusercontent.com/4N0D1N/CookieGuard/main/catalogo/iocs.json",
+    "iocs_ttl_horas": 24,
+    "sesiones_escritorio_activas": True,
     "extensiones_peligrosas": ["cookies", "<all_urls>", "webRequest", "webRequestBlocking", "debugger",
                                "nativeMessaging", "proxy", "*://*/*", "http://*/*", "https://*/*"],
 }

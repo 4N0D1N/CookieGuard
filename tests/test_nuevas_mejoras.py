@@ -10,7 +10,7 @@ from cookieguard.common import VERSION
 
 class TestNuevasMejoras(TmpHome):
     def test_version_1_1_0(self):
-        self.assertIn(VERSION, ["1.1.0", "1.2.0", "1.3.0"])
+        self.assertIn(VERSION, ["1.1.0", "1.2.0", "1.3.0", "1.4.0"])
 
     def test_killswitch_dry_run_y_status(self):
         st = killswitch.status()

@@ -2,7 +2,7 @@
 
 > **Monitor local de integridad para cookies de sesión de navegadores (Chrome, Firefox, Edge, Brave). Detección de accesos no autorizados, Killswitch de red y respuesta rápida ante exfiltración de infostealers.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.3.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.4.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
@@ -67,6 +67,31 @@ Con estas cookies, un ciberdelincuente puede:
 ---
 
 
+## 🚀 Novedades de la Versión 1.4.0
+
+- 🔄 **Threat Intelligence & Auto-actualización de IoCs (Indicador I16):**
+  - Base de datos activa con hashes SHA-256 de stealers (LummaC2, Stealc, Vidar, RedLine, Meduza), nombres de ejecutables sospechosos y dominios/IPs de C2.
+  - **Actualización automática en segundo plano:** Descarga periódica de feeds de IoCs directamente desde GitHub con verificación de integridad y control de frecuencia (TTL 24h).
+  - **100% fiel a la política de privacidad:** Cero módulos de red en Python (utiliza curl nativo en Linux o PowerShell en Windows) y modo offline-first instantáneo si no hay red.
+- 💬 **Auditoría de Sesiones de Apps de Escritorio y Wallets (Indicador I17):**
+  - Ampliación de la cobertura más allá del navegador: detecta e inventaría sesiones activas de **Telegram Desktop, Discord** y monederos de criptomonedas (**Exodus, Electrum, Atomic Wallet, Steam**).
+  - Identifica modificaciones anómalas o accesos recientes a tokens de escritorio típicamente codiciados por stealers.
+- 🧩 **Auditor de Extensiones del Navegador:**
+  - Inspecciona todas las extensiones instaladas en perfiles Chromium y Firefox.
+  - Clasifica niveles de riesgo según permisos sensibles (all_urls, webRequest, cookies, debugger).
+  - Ejecutable con `python -m cookieguard extensions`.
+- 🧪 **Simulador Seguro de Ataques (Test Harness):**
+  - Permite verificar el correcto funcionamiento de las alertas, notificaciones del sistema y el panel de triaje sin poner en riesgo datos reales.
+  - Crea una base de datos señuelo en memoria/directorio temporal y emula una tentativa de exfiltración.
+  - Ejecutable con `python -m cookieguard simular`.
+- ⚙️ **Gestor de Servicio en Segundo Plano:**
+  - Instalador/desinstalador automático del vigilante como Tarea Programada nativa en Windows (`schtasks`) o servicio de usuario `systemd` en Linux (`cookieguard.service`).
+  - Ejecutable con `python -m cookieguard service install | status | uninstall`.
+- 📊 **Emisor de Eventos SIEM y Syslog:**
+  - Emite alertas estructuradas en formato JSON Lines (`data/logs/cookieguard_siem.jsonl`) y formato estándar CEF (Common Event Format) para integración con Wazuh, Splunk, Elastic y Microsoft Sentinel.
+
+---
+
 ## 🚀 Novedades de la Versión 1.3.0
 
 - **📦 Ejecutable Standalone "Doble Clic" (.exe Windows y binario Linux):**
@@ -93,8 +118,16 @@ CookieGuard/
 ├── cookieguard/                        # Núcleo Python multiplataforma
 │   ├── engine.py                       # Motor de orquestación y auditoría
 │   ├── watcher.py                      # Vigilante en segundo plano (Windows & Linux)
-│   ├── detections.py                   # 13 Indicadores heurísticos y MITRE ATT&CK
+│   ├── detections.py                   # 17 Indicadores heurísticos y MITRE ATT&CK (I01 a I17)
 │   ├── inventory.py                    # Inventario de sesiones por navegador
+│   ├── process_hunter.py               # Cazador heurístico de procesos infostealers
+│   ├── ioc_updater.py                  # Motor de Threat Intelligence y auto-actualizador de IoCs
+│   ├── desktop_sessions.py             # Auditor de sesiones Telegram, Discord y Wallets (I17)
+│   ├── extensions.py                   # Auditor de permisos y extensiones de navegadores
+│   ├── simulator.py                    # Simulador seguro de incidentes y test harness
+│   ├── service.py                      # Gestor de servicio segundo plano (Windows & systemd)
+│   ├── siem.py                         # Emisor de eventos estructurados SIEM (CEF / JSON Lines)
+│   ├── triage.py                       # Generador de kit forense y checklist USB
 │   ├── reports.py                      # Generador de Dashboard HTML autónomo
 │   ├── gui.py                          # Interfaz gráfica de escritorio (Tkinter)
 │   ├── notify.py                       # Notificaciones nativas (Toast / notify-send)

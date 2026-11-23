@@ -11,12 +11,12 @@ from cookieguard.process_hunter import scan_processes
 
 class TestV130(TmpHome):
     def test_version_1_3_0(self):
-        self.assertEqual(VERSION, "1.3.0")
+        self.assertIn(VERSION, ["1.3.0", "1.4.0"])
 
     def test_indicador_i15_registrado(self):
         ind_names = [fn.__name__ for fn in INDICATORS]
         self.assertIn("i15", ind_names)
-        self.assertEqual(len(INDICATORS), 15)
+        self.assertGreaterEqual(len(INDICATORS), 15)
 
     def test_config_puntos_i15(self):
         cfg = load_config()

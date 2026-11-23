@@ -19,7 +19,9 @@
     "I12_anomalias_cookies": 10,
     "I13_canary_cookie": 45,
     "I14_dpapi_masterkey": 40,
-    "I15_procesos_infostealer": 45
+    "I15_procesos_infostealer": 45,
+    "I16_ioc_malicioso": 45,
+    "I17_sesiones_escritorio": 30
   },
   "dias": {
     "zombie_sin_uso": 90,
@@ -40,5 +42,9 @@
   "killswitch_activo": false,
   "dbsc_auditoria": true,
   "hardening_auditoria": true,
-  "tray_habilitado": true
+  "tray_habilitado": true,
+  "iocs_auto_actualizar": true,
+  "iocs_feed_url": "https://raw.githubusercontent.com/4N0D1N/CookieGuard/main/catalogo/iocs.json",
+  "iocs_ttl_horas": 24,
+  "sesiones_escritorio_activas": true
 }

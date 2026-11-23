@@ -1126,7 +1126,96 @@ def i15(ctx: Ctx):
         r["resumen"] = f"Error al escanear procesos: {e}"
     return r
 
-INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13, i14, i15]
+# ------------------------------------------------------------------ I16 IoCs maliciosos (Threat Intelligence)
+def i16(ctx: Ctx):
+    r = mk("I16_ioc_malicioso", "Indicadores de Compromiso (IoCs) Maliciosos Actualizados", "T1071 / T1041 / T1555",
+           "Compara conexiones activas, procesos y hashes del sistema contra la base de datos de Threat Intelligence "
+           "de infostealers (C2 IPs, C2 domains, hashes de stealers y droppers), con actualizacion automatica.")
+    try:
+        from .ioc_updater import get_active_iocs, auto_update_in_background, match_process_against_iocs, match_network_against_iocs
+        auto_update_in_background(ctx.cfg)
+        iocs = get_active_iocs()
+        hits = []
+        worst = 0.0
+
+        for p in ctx.procs:
+            p_hits = match_process_against_iocs(
+                nombre=p.get("name", ""),
+                ruta=p.get("exe", ""),
+                cmdline=p.get("cmd", ""),
+                iocs=iocs
+            )
+            for h in p_hits:
+                hits.append(f"Proceso PID {p.get('pid')} ({p.get('name')}): {h['detalle']} [{h['familia']}]")
+                worst = max(worst, 1.0 if h["severidad"] == "CRITICA" else 0.7)
+
+        # Comprobacion de dominios resueltos en cache DNS
+        dns_names = _dns_cache_names()
+        for dname in dns_names:
+            n_hits = match_network_against_iocs(dominio=dname, iocs=iocs)
+            for h in n_hits:
+                hits.append(f"DNS cache sospechosa: {dname} - {h['detalle']} [{h['familia']}]")
+                worst = max(worst, 1.0 if h["severidad"] == "CRITICA" else 0.7)
+
+        # Comprobacion de conexiones si estan disponibles en contexto
+        for conn in getattr(ctx, "net", []):
+            remote_ip = conn.get("remote_ip", "")
+            remote_domain = conn.get("domain", "")
+            if remote_ip or remote_domain:
+                n_hits = match_network_against_iocs(ip=remote_ip, dominio=remote_domain, iocs=iocs)
+                for h in n_hits:
+                    hits.append(f"Conexion sospechosa ({remote_ip}): {h['detalle']} [{h['familia']}]")
+                    worst = max(worst, 1.0 if h["severidad"] == "CRITICA" else 0.7)
+
+        total_hashes = len(iocs.get("stealer_hashes_sha256", []))
+        total_dominios = len(iocs.get("c2_dominios", []))
+        total_ips = len(iocs.get("c2_ips", []))
+
+        if hits:
+            r["estado"], r["hallazgos"] = "alerta", hits[:20]
+            r["puntos"] = ctx.pts(r["id"], worst)
+            r["resumen"] = f"¡Alerta! {len(hits)} coincidencia(s) con IoCs maliciosos ({total_hashes} hashes, {total_dominios} dominios C2)"
+        else:
+            r["estado"] = "ok"
+            r["resumen"] = f"Sin coincidencias con IoCs maliciosos ({total_hashes} hashes, {total_dominios} dominios C2, {total_ips} IPs verificados)"
+    except Exception as e:
+        log(f"i16 fallo: {e}")
+        r["estado"] = "error"
+        r["resumen"] = f"Error al verificar IoCs: {e}"
+    return r
+
+
+# ------------------------------------------------------------------ I17 sesiones de escritorio
+def i17(ctx: Ctx):
+    r = mk("I17_sesiones_escritorio", "Sesiones y Billeteras de Escritorio (Telegram / Discord / Wallets)", "T1555 / T1539",
+           "Audita la presencia e integridad de sesiones criticas de escritorio (Telegram Desktop, Discord, billeteras cripto "
+           "como Exodus, Electrum o MetaMask). Analisis 100% de metadatos, sin descifrar ni exponer secretos.")
+    try:
+        from .desktop_sessions import audit_desktop_sessions
+        res = audit_desktop_sessions()
+        apps_det = res.get("apps_detectadas", 0)
+        sesiones = res.get("sesiones", [])
+
+        if apps_det > 0:
+            recientes = [s for s in sesiones if s.get("horas_ultima_modificacion", 9999) < 1.0]
+            r["estado"] = "ok"
+            apps_str = ", ".join(res.get("apps_lista", []))
+            r["resumen"] = f"{apps_det} aplicacion(es) de escritorio auditadas: {apps_str}"
+            if recientes:
+                r["hallazgos"] = [
+                    f"{s['app']} ({s['categoria']}): Modificacion reciente (hace {s['horas_ultima_modificacion']}h) en {s['ruta']}"
+                    for s in recientes
+                ]
+        else:
+            r["estado"] = "ok"
+            r["resumen"] = "No se detectaron aplicaciones de escritorio sensibles (Telegram, Discord, Wallets) en rutas estandar"
+    except Exception as e:
+        log(f"i17 fallo: {e}")
+        r["estado"] = "error"
+        r["resumen"] = f"Error al auditar sesiones de escritorio: {e}"
+    return r
+
+INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13, i14, i15, i16, i17]
 
 
 
@@ -1145,7 +1234,7 @@ def run_all(ctx: Ctx, progress=None) -> list[dict]:
                          "i04": "I04_abe_elevation", "i05": "I05_extensiones", "i06": "I06_copias_bd",
                          "i07": "I07_red_exfil", "i08": "I08_defender", "i09": "I09_persistencia",
                          "i10": "I10_ejecutables", "i11": "I11_manipulacion_red",
-                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie", "i14": "I14_dpapi_masterkey", "i15": "I15_procesos_infostealer"}[fn.__name__]
+                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie", "i14": "I14_dpapi_masterkey", "i15": "I15_procesos_infostealer", "i16": "I16_ioc_malicioso", "i17": "I17_sesiones_escritorio"}[fn.__name__]
             res["estado"], res["resumen"] = "error", f"El indicador fallo ({type(e).__name__}); ver el log"
         res["segundos"] = round(time.time() - t0, 1)
         if progress:

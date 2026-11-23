@@ -191,6 +191,26 @@ def scan_processes(procs: list[dict] | None = None) -> dict:
                     })
                     break
 
+        # 3.5 Coincidencia directa contra Threat Intelligence / IoCs activos
+        try:
+            from .ioc_updater import match_process_against_iocs
+            ioc_hits = match_process_against_iocs(nombre=p.get('name', ''), ruta=exe_orig, cmdline=cmd)
+            if ioc_hits:
+                hit = ioc_hits[0]
+                if not any(s['pid'] == pid for s in sospechosos):
+                    sospechosos.append({
+                        'pid': pid,
+                        'name': p.get('name'),
+                        'exe': exe_orig,
+                        'cmd': cmd,
+                        'familia': hit.get('familia', 'Infostealer catalogado'),
+                        'severidad': hit.get('severidad', 'CRITICA'),
+                        'motivo': hit.get('detalle', 'Coincidencia exacta con base de datos de IoCs'),
+                        'comando': f'taskkill /F /PID {pid}' if IS_WIN else f'kill -9 {pid}'
+                    })
+        except Exception:
+            pass
+
     # 4. Descriptores abiertos en Linux hacia ficheros de cookies por procesos que no son navegadores
     if IS_LINUX:
         for p in procs:

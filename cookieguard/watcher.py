@@ -174,6 +174,11 @@ class Watcher:
         self.seen: dict = {}
         self.last_event_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
         self.sources = []
+        try:
+            from .ioc_updater import auto_update_in_background
+            auto_update_in_background(self.cfg)
+        except Exception:
+            pass
 
     def _emit(self, key, titulo, motivo, p):
         if time.time() - self.seen.get(key, 0) < 600:
@@ -315,6 +320,12 @@ def main() -> int:
         except Exception as e:  # noqa: BLE001
             log(f"vigilante error: {type(e).__name__}: {e}")
         n += 1
+        if n % 360 == 0:
+            try:
+                from .ioc_updater import auto_update_in_background
+                auto_update_in_background(w.cfg)
+            except Exception:
+                pass
         if n % 30 == 0 or n == 2:
             u = self_usage()
             wall = time.time() - t0

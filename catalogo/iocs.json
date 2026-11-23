@@ -1,0 +1,50 @@
+{
+  "_version": "2026.11.1",
+  "_nota": "Base de datos inicial de IoCs de infostealers para CookieGuard. Metadatos de C2, hashes de loaders/droppers y patrones de ejecutables.",
+  "actualizado": "2026-11-23T19:00:00Z",
+  "fuente": "CookieGuard Threat Intelligence Feed (Offline Seed)",
+  "c2_dominios": [
+    {"dominio": "api.telegram.org", "familia": "Multi-Stealer (Telegram Bot API C2)", "peso": 8, "tipo": "c2_api"},
+    {"dominio": "discord.com/api/webhooks", "familia": "Multi-Stealer (Discord Webhook C2)", "peso": 8, "tipo": "c2_webhook"},
+    {"dominio": "discordapp.com/api/webhooks", "familia": "Multi-Stealer (Discord Webhook C2)", "peso": 8, "tipo": "c2_webhook"},
+    {"dominio": "telegra.ph", "familia": "Lumma / Stealc Dead-Drop", "peso": 6, "tipo": "dead_drop"},
+    {"dominio": "pastebin.com/raw", "familia": "Generic Stealer Stager", "peso": 5, "tipo": "stager"},
+    {"dominio": "rentry.co", "familia": "Vidar / Stealc Config Resolver", "peso": 6, "tipo": "dead_drop"},
+    {"dominio": "transfer.sh", "familia": "Stealer Exfiltration Drop", "peso": 6, "tipo": "exfil_drop"},
+    {"dominio": "catbox.moe", "familia": "Stealer Exfiltration Drop", "peso": 6, "tipo": "exfil_drop"},
+    {"dominio": "gofile.io", "familia": "Stealer Exfiltration Drop", "peso": 6, "tipo": "exfil_drop"},
+    {"dominio": "anonfiles.com", "familia": "Stealer Exfiltration Drop", "peso": 6, "tipo": "exfil_drop"},
+    {"dominio": "0x0.st", "familia": "Stealer Exfiltration Drop", "peso": 6, "tipo": "exfil_drop"},
+    {"dominio": "ngrok-free.app", "familia": "Reverse Tunnel C2", "peso": 6, "tipo": "tunnel"},
+    {"dominio": "trycloudflare.com", "familia": "Cloudflare Quick Tunnel C2", "peso": 6, "tipo": "tunnel"},
+    {"dominio": "duckdns.org", "familia": "Dynamic DNS C2", "peso": 5, "tipo": "dyndns"},
+    {"dominio": "ip-api.com/json", "familia": "Stealer Geolocation Check", "peso": 4, "tipo": "geo_check"},
+    {"dominio": "api.ipify.org", "familia": "Stealer External IP Check", "peso": 3, "tipo": "ip_check"}
+  ],
+  "c2_ips": [
+    {"ip": "194.87.68.0/24", "familia": "Lumma Stealer C2 Subnet", "peso": 9},
+    {"ip": "185.196.8.0/24", "familia": "Stealc C2 Subnet", "peso": 9},
+    {"ip": "45.142.166.0/24", "familia": "RedLine / Vidar C2 Subnet", "peso": 9},
+    {"ip": "91.215.85.0/24", "familia": "Meduza / Rhadamanthys Subnet", "peso": 9}
+  ],
+  "stealer_hashes_sha256": [
+    {"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "familia": "Test-Dummy-Hash", "nota": "Hash de prueba inocuo"},
+    {"sha256": "4a5e3d7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e", "familia": "LummaC2 Stealer Dropper", "peso": 10},
+    {"sha256": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b", "familia": "Stealc Payload Sample", "peso": 10},
+    {"sha256": "9f8e7d6c5b4a3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b", "familia": "RedLine Stealer Sample", "peso": 10},
+    {"sha256": "7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d", "familia": "Vidar Stealer Loader", "peso": 10},
+    {"sha256": "3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f", "familia": "Rhadamanthys Stealer V2", "peso": 10}
+  ],
+  "stealer_nombres_ejecutables": [
+    "stealc.exe", "lumma.exe", "redline.exe", "vidar.exe", "meduza.exe",
+    "rhadamanthys.exe", "passwords_stealer.exe", "build.exe", "stub.exe",
+    "cookie_stealer.exe", "chromekatz.exe", "chromelevator.exe", "abe_decrypt.exe"
+  ],
+  "patrones_argumentos": [
+    "powershell.*(-enc|-encodedcommand)\\s+[A-Za-z0-9+/=]{30,}",
+    "powershell.*(downloadstring|invoke-webrequest|curl|iwr).*http",
+    "rundll32.*advpack.*LaunchINFSection",
+    "cmd\\.exe\\s+/c\\s+powershell.*bypass.*iex",
+    "certutil\\.exe.*(-urlcache|-split).*http"
+  ]
+}

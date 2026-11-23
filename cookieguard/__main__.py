@@ -77,6 +77,22 @@ def main(argv=None):
 
     pr = sub.add_parser("procesos", help="Process Hunter: escanea procesos en memoria buscando infostealers activos")
     pr.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    u_ioc = sub.add_parser("update-iocs", help="Actualiza la base de datos de IoCs (Threat Intelligence)")
+    u_ioc.add_argument("--feed", type=str, default=None, help="URL del feed personalizado")
+    u_ioc.add_argument("--force", action="store_true", help="Fuerza la descarga ignorando la cache TTL")
+    u_ioc.add_argument("--check", action="store_true", help="Comprueba el estado de la base de datos sin descargar")
+
+    sub.add_parser("simular", help="Ejecuta simulador de ataque seguro para probar alertas y triaje")
+
+    srv = sub.add_parser("service", help="Gestion del servicio en segundo plano y autoarranque")
+    srv.add_argument("accion", choices=["install", "uninstall", "status"], help="Accion del servicio")
+
+    ds = sub.add_parser("desktop-sessions", help="Audita sesiones de escritorio (Telegram, Discord, Wallets)")
+    ds.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    ext = sub.add_parser("extensions", help="Audita extensiones de navegador y permisos abusivos")
+    ext.add_argument("--json", action="store_true", help="Salida en formato JSON")
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
@@ -244,6 +260,71 @@ def main(argv=None):
                     print(f"      Ruta: {s['exe']}")
                     print(f"      Motivo: {s['motivo']}")
                     print(f"      Acción: {s['comando']}")
+        return 0
+    elif args.cmd == "update-iocs":
+        from . import ioc_updater
+        if getattr(args, "check", False):
+            iocs = ioc_updater.get_active_iocs()
+            print("=== ESTADO DE BASE DE DATOS DE IOCs (THREAT INTELLIGENCE) ===")
+            print(f"Version: {iocs.get('_version', 'local')}")
+            print(f"Ultima actualizacion: {iocs.get('actualizado', 'No disponible')}")
+            print(f"Hashes SHA-256 de stealers: {len(iocs.get('stealer_hashes_sha256', []))}")
+            print(f"Dominios de C2/Exfiltracion: {len(iocs.get('c2_dominios', []))}")
+            print(f"IPs y Subredes de C2:        {len(iocs.get('c2_ips', []))}")
+            print(f"Nombres de ejecutables:       {len(iocs.get('stealer_nombres_ejecutables', []))}")
+            return 0
+        res = ioc_updater.update_iocs(feed_url=getattr(args, "feed", None), force=getattr(args, "force", False))
+        tag = "OK" if res["success"] else "AVISO"
+        print(f"[{tag}] {res['mensaje']}")
+        print(f"Total hashes: {res['total_hashes']} | Dominios C2: {res['total_dominios']} | Version: {res.get('version', '')}")
+        return 0 if res["success"] else 1
+    elif args.cmd == "simular":
+        from . import simulator
+        res = simulator.run_attack_simulation()
+        return 0 if res["todas_pasadas"] else 1
+    elif args.cmd == "service":
+        from . import service
+        accion = getattr(args, "accion", "status")
+        if accion == "install":
+            res = service.install_service()
+            print(f"[{'OK' if res.get('success') else 'FALLO'}] {res.get('mensaje')}")
+            return 0 if res.get('success') else 1
+        elif accion == "uninstall":
+            res = service.uninstall_service()
+            print(f"[{'OK' if res.get('success') else 'FALLO'}] {res.get('mensaje')}")
+            return 0 if res.get('success') else 1
+        else:
+            res = service.status_service()
+            print(f"Servicio ({res.get('plataforma')}): {'INSTALADO' if res.get('instalado') else 'NO INSTALADO'}")
+            print(f"Detalle: {res.get('detalle') or res.get('estado') or 'N/A'}")
+            return 0
+    elif args.cmd == "desktop-sessions":
+        from . import desktop_sessions
+        res = desktop_sessions.audit_desktop_sessions()
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== SESIONES Y BILLETERAS DE ESCRITORIO ({res['apps_detectadas']} detectadas) ===")
+            for s in res["sesiones"]:
+                print(f"  [{s['criticidad']}] {s['app']} ({s['categoria']})")
+                print(f"      Ruta: {s['ruta']} ({s['num_archivos']} ficheros, ult. mod. hace {s['horas_ultima_modificacion']}h)")
+                print(f"      Consejo: {s['consejo']}")
+        return 0
+    elif args.cmd == "extensions":
+        from . import extensions
+        res = extensions.audit_browser_extensions()
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== EXTENSIONES DE NAVEGADOR AUDITADAS ({len(res)} extensiones) ===")
+            for e in res[:15]:
+                mark = "!!" if e["severidad"] in ("CRITICA", "ALTA") else "OK"
+                print(f"  [{mark} - {e['severidad']}] {e['nombre']} v{e['version']} ({e['browser']})")
+                print(f"      ID: {e['extension_id']} | Sideloaded: {'SI' if e['es_sideloaded'] else 'NO'}")
+                if e["motivos"]:
+                    print(f"      Riesgos: {', '.join(e['motivos'])}")
         return 0
     return 0
 
