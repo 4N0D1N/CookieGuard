@@ -93,6 +93,25 @@ def main(argv=None):
 
     ext = sub.add_parser("extensions", help="Audita extensiones de navegador y permisos abusivos")
     ext.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    hp = sub.add_parser("honeypot", help="Gestion de perfiles senuelo trampa contra infostealers")
+    hp.add_argument("--setup", action="store_true", help="Crea perfiles trampa en los navegadores")
+    hp.add_argument("--check", action="store_true", help="Comprueba si algun perfil trampa fue leido")
+    hp.add_argument("--remove", action="store_true", help="Elimina los perfiles trampa")
+
+    ma = sub.add_parser("memory-audit", help="Audita memoria y DLLs inyectadas en navegadores activos")
+    ma.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    sn = sub.add_parser("snapshot", help="Genera snapshot forense de evidencias volatiles en ZIP")
+    sn.add_argument("--motivo", type=str, default="manual", help="Motivo de la captura")
+    sn.add_argument("--salida", type=str, default=None, help="Carpeta de destino")
+
+    dos = sub.add_parser("dossier", help="Genera informe formal de incidente alineado con MITRE ATT&CK")
+    dos.add_argument("--formato", choices=["html", "md"], default="html", help="Formato del dossier")
+    dos.add_argument("--salida", type=str, default=None, help="Ruta del archivo generado")
+
+    rev = sub.add_parser("revocar", help="Genera script por lotes para revocacion rapida de sesiones")
+    rev.add_argument("--salida", type=str, default=None, help="Carpeta de destino del script")
+
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)

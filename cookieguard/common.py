@@ -16,7 +16,7 @@ if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     APP_ROOT = Path(sys._MEIPASS)
 else:
     APP_ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 _perm_done: set = set()
 
@@ -33,7 +33,7 @@ def data_dir() -> Path:
         base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
         p = Path(base) / "cookieguard"
     p.mkdir(parents=True, exist_ok=True)
-    for sub in ("informes", "logs", "backups", "tmp"):
+    for sub in ("informes", "logs", "backups", "tmp", "forense"):
         (p / sub).mkdir(exist_ok=True)
     if str(p) not in _perm_done:
         _perm_done.add(str(p))
@@ -90,7 +90,10 @@ def is_admin() -> bool:
 # ---------------------------------------------------------------- configuracion
 DEFAULT_CONFIG = {
     "umbrales": {"amarillo": 15, "rojo": 40},
-    "puntos": {},
+    "puntos": {
+        "I18_perfil_trampa": 90,
+        "I19_inyeccion_memoria": 85
+    },
     "dias": {"zombie_sin_uso": 90, "zombie_caduca_en": 365, "caduca_pronto": 7, "sin_uso": 90,
              "ejecutables_recientes": 14},
     "whitelist_procesos": [
@@ -113,6 +116,8 @@ DEFAULT_CONFIG = {
     "iocs_feed_url": "https://raw.githubusercontent.com/4N0D1N/CookieGuard/main/catalogo/iocs.json",
     "iocs_ttl_horas": 24,
     "sesiones_escritorio_activas": True,
+    "honeypot_activo": True,
+    "memory_audit_activo": True,
     "extensiones_peligrosas": ["cookies", "<all_urls>", "webRequest", "webRequestBlocking", "debugger",
                                "nativeMessaging", "proxy", "*://*/*", "http://*/*", "https://*/*"],
 }

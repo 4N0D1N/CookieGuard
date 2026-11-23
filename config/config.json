@@ -21,7 +21,9 @@
     "I14_dpapi_masterkey": 40,
     "I15_procesos_infostealer": 45,
     "I16_ioc_malicioso": 45,
-    "I17_sesiones_escritorio": 30
+    "I17_sesiones_escritorio": 30,
+    "I18_perfil_trampa": 45,
+    "I19_inyeccion_memoria": 40
   },
   "dias": {
     "zombie_sin_uso": 90,
@@ -46,5 +48,7 @@
   "iocs_auto_actualizar": true,
   "iocs_feed_url": "https://raw.githubusercontent.com/4N0D1N/CookieGuard/main/catalogo/iocs.json",
   "iocs_ttl_horas": 24,
-  "sesiones_escritorio_activas": true
+  "sesiones_escritorio_activas": true,
+  "honeypot_activo": true,
+  "memory_audit_activo": true
 }

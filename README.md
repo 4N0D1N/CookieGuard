@@ -2,7 +2,7 @@
 
 > **Monitor local de integridad para cookies de sesión de navegadores (Chrome, Firefox, Edge, Brave). Detección de accesos no autorizados, Killswitch de red y respuesta rápida ante exfiltración de infostealers.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.4.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.5.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
@@ -67,6 +67,27 @@ Con estas cookies, un ciberdelincuente puede:
 ---
 
 
+## 🚀 Novedades de la Versión 1.5.0
+
+- 🍯 **Perfil Honeypot / Trampa contra Infostealers (Indicador I18):**
+  - Siembra de carpetas señuelo (`Profile Honeypot`) en los directorios de perfiles de Chrome, Edge, Brave y Firefox.
+  - Genera una base SQLite señuelo con credenciales corporativas simuladas (`.vault-admin.corp-sso.internal`).
+  - Si un infostealer rastrea perfiles de navegador y lee o modifica la base trampa, CookieGuard dispara una alerta roja inmediata de contención.
+- 🧠 **Auditoría de Memoria y DLL Injection / Hooking (Indicador I19):**
+  - Inspecciona la memoria activa de los procesos del navegador (`/proc/*/maps` en Linux, módulos de procesos en Windows).
+  - Detecta DLLs o librerías dinámicas cargadas desde rutas temporales anómalas (`Temp`, `AppData\Local\Temp`) o hooks sospechosos de intercepción.
+- 📦 **Live Forensics Snapshot ZIP:**
+  - Empaqueta en caliente un archivo ZIP con el estado volátil del equipo en el instante del incidente: árbol de procesos con líneas de comando, conexiones de red activas, caché DNS y hashes SHA-256 de ejecutables sospechosos con su `manifest.json`.
+- 📑 **Dossier de Incidente formal alineado con MITRE ATT&CK:**
+  - Exportación de informes periciales completos en **HTML interactivo** (listo para imprimir en PDF con estilos tipográficos limpios) y **Markdown**.
+  - Mapeo automático de cada hallazgo con las técnicas del marco MITRE ATT&CK (T1539, T1555, T1055, T1071, etc.).
+- ⚡ **1-Click Batch Invalidator (Revocación por lotes):**
+  - Identifica los servicios en riesgo (Google, GitHub, Microsoft, AWS, Discord, etc.) y genera un script ejecutable (`.cmd` / `.sh`) que lanza en paralelo las páginas oficiales de gestión de dispositivos y cierre de sesiones remotas.
+- 🧰 **Integración en Modo Rescate USB (Triage):**
+  - El kit de rescate USB genera ahora automáticamente el snapshot volátil, el dossier pericial MITRE y el script de revocación urgente en un solo paso.
+
+---
+
 ## 🚀 Novedades de la Versión 1.4.0
 
 - 🔄 **Threat Intelligence & Auto-actualización de IoCs (Indicador I16):**
@@ -118,7 +139,7 @@ CookieGuard/
 ├── cookieguard/                        # Núcleo Python multiplataforma
 │   ├── engine.py                       # Motor de orquestación y auditoría
 │   ├── watcher.py                      # Vigilante en segundo plano (Windows & Linux)
-│   ├── detections.py                   # 17 Indicadores heurísticos y MITRE ATT&CK (I01 a I17)
+│   ├── detections.py                   # 19 Indicadores heurísticos (I01 a I19) y MITRE ATT&CK (I01 a I17)
 │   ├── inventory.py                    # Inventario de sesiones por navegador
 │   ├── process_hunter.py               # Cazador heurístico de procesos infostealers
 │   ├── ioc_updater.py                  # Motor de Threat Intelligence y auto-actualizador de IoCs
@@ -127,6 +148,11 @@ CookieGuard/
 │   ├── simulator.py                    # Simulador seguro de incidentes y test harness
 │   ├── service.py                      # Gestor de servicio segundo plano (Windows & systemd)
 │   ├── siem.py                         # Emisor de eventos estructurados SIEM (CEF / JSON Lines)
+│   ├── honeypot.py                     # Perfiles trampa señuelo contra stealers (I18)
+│   ├── memory_audit.py                 # Auditoría de DLL injection y hooking (I19)
+│   ├── forensics.py                    # Captura de snapshot volátil forense en ZIP
+│   ├── incident_report.py              # Generador de Dossier MITRE ATT&CK (HTML/MD)
+│   ├── invalidation.py                 # Generador de scripts de revocación por lotes
 │   ├── triage.py                       # Generador de kit forense y checklist USB
 │   ├── reports.py                      # Generador de Dashboard HTML autónomo
 │   ├── gui.py                          # Interfaz gráfica de escritorio (Tkinter)
@@ -183,7 +209,7 @@ bash linux/instalar_vigilante.sh
 
 ## 🧪 Pruebas y Validación de Seguridad
 
-El proyecto incluye 52 pruebas unitarias automatizadas que garantizan el correcto funcionamiento y el cumplimiento estricto de los requisitos de privacidad:
+El proyecto incluye 84 pruebas automatizadas (77 unitarias y 7 de seguridad estricta) que garantizan el correcto funcionamiento y el cumplimiento estricto de los requisitos de privacidad:
 
 ```bash
 python3 -m unittest discover -s tests -v

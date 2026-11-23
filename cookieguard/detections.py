@@ -1215,7 +1215,64 @@ def i17(ctx: Ctx):
         r["resumen"] = f"Error al auditar sesiones de escritorio: {e}"
     return r
 
-INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13, i14, i15, i16, i17]
+
+# ------------------------------------------------------------------ I18 perfil trampa (Honeypot)
+def i18(ctx: Ctx):
+    r = mk("I18_perfil_trampa", "Interacción o acceso a Perfil Trampa (Honeypot)", "T1005 / T1555",
+           "Los perfiles trampa señuelo contienen bases de cookies falsas. Si un proceso o stealer "
+           "intenta leerlos o modificarlos, se genera una alerta inmediata de contención.")
+    try:
+        from . import honeypot
+        res = honeypot.check_honeypot()
+        if res.get("disparado"):
+            r["estado"] = "alerta"
+            r["puntos"] = ctx.pts(r["id"], 1.0)
+            hallazgos = []
+            for a in res.get("alertas", []):
+                hallazgos.append(f"[{a.get("tipo")}] {a.get("fichero")}: {a.get("detalle")}")
+            r["hallazgos"] = hallazgos
+            r["resumen"] = res.get("resumen")
+        elif res.get("activo"):
+            r["estado"] = "ok"
+            r["resumen"] = res.get("resumen")
+        else:
+            r["estado"] = "sin_datos"
+            r["resumen"] = res.get("motivo", "Perfil trampa no configurado")
+            r["falta"] = "Ejecutar 'cookieguard honeypot-setup' para sembrar perfiles senuelo"
+    except Exception as e:
+        log(f"i18 fallo: {e}")
+        r["estado"] = "error"
+        r["resumen"] = f"Error comprobando perfil trampa: {e}"
+    return r
+
+
+# ------------------------------------------------------------------ I19 inyeccion de memoria / DLL
+def i19(ctx: Ctx):
+    r = mk("I19_inyeccion_memoria", "Inyección de DLL / Hooking en Navegadores", "T1055 / T1003",
+           "Detecta librerías o módulos no estándar inyectados en la memoria de los navegadores "
+           "activos (DLLs en Temp, hooks de intercepción de funciones de red/cifrado).")
+    try:
+        from . import memory_audit
+        res = memory_audit.audit_browser_memory(ctx.procs)
+        if not res.get("limpio", True):
+            r["estado"] = "alerta"
+            r["puntos"] = ctx.pts(r["id"], 1.0)
+            hallazgos = []
+            for a in res.get("anomalias", []):
+                hallazgos.append(f"PID {a.get("pid")} ({a.get("proceso")}): [{a.get("tipo")}] {a.get("ruta")} - {a.get("motivo")}")
+            r["hallazgos"] = hallazgos
+            r["resumen"] = f"¡Alerta! {len(hallazgos)} módulo(s) inyectado(s) o sospechoso(s) en navegadores"
+        else:
+            r["estado"] = "ok"
+            r["resumen"] = "Sin librerías ni hooks sospechosos inyectados en la memoria de los navegadores"
+    except Exception as e:
+        log(f"i19 fallo: {e}")
+        r["estado"] = "error"
+        r["resumen"] = f"Error en auditoría de memoria: {e}"
+    return r
+
+INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13, i14, i15, i16, i17, i18, i19]
+
 
 
 
@@ -1234,7 +1291,7 @@ def run_all(ctx: Ctx, progress=None) -> list[dict]:
                          "i04": "I04_abe_elevation", "i05": "I05_extensiones", "i06": "I06_copias_bd",
                          "i07": "I07_red_exfil", "i08": "I08_defender", "i09": "I09_persistencia",
                          "i10": "I10_ejecutables", "i11": "I11_manipulacion_red",
-                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie", "i14": "I14_dpapi_masterkey", "i15": "I15_procesos_infostealer", "i16": "I16_ioc_malicioso", "i17": "I17_sesiones_escritorio"}[fn.__name__]
+                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie", "i14": "I14_dpapi_masterkey", "i15": "I15_procesos_infostealer", "i16": "I16_ioc_malicioso", "i17": "I17_sesiones_escritorio", "i18": "I18_perfil_trampa", "i19": "I19_inyeccion_memoria"}[fn.__name__]
             res["estado"], res["resumen"] = "error", f"El indicador fallo ({type(e).__name__}); ver el log"
         res["segundos"] = round(time.time() - t0, 1)
         if progress:

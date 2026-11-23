@@ -13,7 +13,7 @@ from cookieguard.detections import Ctx, i14
 
 class TestV120(TmpHome):
     def test_version_1_2_0(self):
-        self.assertIn(VERSION, ["1.2.0", "1.3.0", "1.4.0"])
+        self.assertIn(VERSION, ["1.2.0", "1.3.0", "1.4.0", "1.5.0"])
 
     def test_i14_localstate_clean(self):
         ctx = Ctx(cfg={"puntos": {"I14_dpapi_masterkey": 40}}, profiles=[], sessions=[], state={})

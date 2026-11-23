@@ -260,6 +260,17 @@ class Watcher:
             elif _is_browser_proc(p["name"]) and "--headless" in cmd and "--type=" not in cmd:
                 self._emit(f"hl{p['pid']}", "Navegador sin ventana (headless)",
                            f"{p['name']} (PID {p['pid']}) se ejecuta en modo headless.", p)
+        if self.cfg.get("honeypot_activo", True):
+            try:
+                from . import honeypot
+                hp_res = honeypot.check_honeypot()
+                if hp_res.get("disparado"):
+                    self._emit("honeypot_trap", "Intrusión en Perfil Trampa (Honeypot)",
+                               hp_res.get("resumen") or "Lectura o acceso detectado en base de cookies señuelo",
+                               {"pid": 0, "name": "Stealer/Forense", "exe": "Perfil Trampa", "cmd": "", "ppid": 0})
+            except Exception as e:
+                log(f"Fallo check honeypot watcher: {e}")
+
         if not IS_WIN:
             self.sources = ["procesos", "ficheros abiertos (/proc)"]
             byname = {p["pid"]: p for p in procs}

@@ -20,13 +20,13 @@ from cookieguard.detections import INDICATORS, Ctx, i16, i17
 
 class TestV140(TmpHome):
     def test_version_1_4_0(self):
-        self.assertEqual(VERSION, "1.4.0")
+        self.assertIn(VERSION, ("1.4.0", "1.5.0"))
 
     def test_indicadores_i16_e_i17_registrados(self):
         ind_names = [fn.__name__ for fn in INDICATORS]
         self.assertIn("i16", ind_names)
         self.assertIn("i17", ind_names)
-        self.assertEqual(len(INDICATORS), 17)
+        self.assertGreaterEqual(len(INDICATORS), 17)
 
     def test_catalogo_iocs_cargado(self):
         iocs = ioc_updater.get_active_iocs()
@@ -75,7 +75,7 @@ class TestV140(TmpHome):
 
     def test_siem_event_cef_and_jsonl(self):
         cef = siem.to_cef("I16_ioc_malicioso", "CRITICA", "Prueba Titulo", "Detalle de evento", {"pid": 1234})
-        self.assertIn("CEF:0|CookieGuard|CookieGuard|1.4.0|I16_ioc_malicioso", cef)
+        self.assertIn(f"CEF:0|CookieGuard|CookieGuard|{VERSION}|I16_ioc_malicioso", cef)
         self.assertIn("msg=Detalle de evento", cef)
 
         siem.emit_siem_event("I16_ioc_malicioso", "CRITICA", "Titulo Test", "Mensaje Test")

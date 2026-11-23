@@ -17,7 +17,7 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 
-from . import engine, process_hunter, reports
+from . import engine, process_hunter, reports, forensics, incident_report, invalidation
 from .common import IS_WIN, log
 
 
@@ -66,6 +66,28 @@ def run_triage(salida_dir: str | Path | None = None, open_report: bool = True) -
     with open(json_destino, "w", encoding="utf-8") as f:
         json.dump(res, f, indent=2, ensure_ascii=False)
 
+    # 6. Captura de evidencias volátiles (Live Forensics Snapshot)
+    try:
+        snapshot_zip = forensics.capture_volatile_snapshot(reason="triaje_usb", output_dir=out_path)
+    except Exception as e:
+        log(f"Error generando snapshot volátil: {e}")
+        snapshot_zip = ""
+
+    # 7. Dossier de Incidente formal alineado con MITRE ATT&CK
+    try:
+        dossier_html = incident_report.generate_incident_dossier(res, out_path / "Dossier_Incidente_MITRE.html", formato="html")
+        dossier_md = incident_report.generate_incident_dossier(res, out_path / "Dossier_Incidente_MITRE.md", formato="md")
+    except Exception as e:
+        log(f"Error generando dossier MITRE: {e}")
+        dossier_html, dossier_md = "", ""
+
+    # 8. Script por lotes de revocación rápida (1-Click Invalidator)
+    try:
+        inval_script = invalidation.generate_batch_revocation_script(res.get("grupos", []), out_path)
+    except Exception as e:
+        log(f"Error generando script de revocación: {e}")
+        inval_script = ""
+
     if open_report and html_destino.exists():
         try:
             webbrowser.open(html_destino.as_uri())
@@ -77,6 +99,10 @@ def run_triage(salida_dir: str | Path | None = None, open_report: bool = True) -
         "html": str(html_destino),
         "txt": str(txt_destino),
         "json": str(json_destino),
+        "snapshot_zip": str(snapshot_zip),
+        "dossier_html": str(dossier_html),
+        "dossier_md": str(dossier_md),
+        "script_revocacion": str(inval_script),
         "veredicto": res.get("veredicto", {}),
         "malware_encontrado": not ph_res.get("limpio", True),
         "sospechosos": ph_res.get("sospechosos", [])
