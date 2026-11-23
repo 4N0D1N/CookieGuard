@@ -3,6 +3,7 @@
 > **Monitor local de integridad para cookies de sesión de navegadores (Chrome, Firefox, Edge, Brave). Detección de accesos no autorizados, Killswitch de red y respuesta rápida ante exfiltración de infostealers.**
 
 ![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.2.0-blue)
+[![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
 ![Privacidad](https://img.shields.io/badge/Privacidad-100%25%20Offline-red)

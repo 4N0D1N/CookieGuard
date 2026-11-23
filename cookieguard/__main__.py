@@ -187,7 +187,7 @@ def main(argv=None):
     elif args.cmd == "dbsc":
         from . import browsers, dbsc, inventory
         profiles = browsers.discover()
-        cookies, _ = inventory.collect_all(profiles)
+        cookies, _errs, _meta = inventory.collect(profiles)
         from .classifier import classify_all
         sessions = classify_all(cookies)
         res = dbsc.evaluate_dbsc_readiness(profiles, sessions)
@@ -204,6 +204,7 @@ def main(argv=None):
         from . import tray
         tray.start_tray()
         return 0
+    return 0    return 0
     return 0
 
 

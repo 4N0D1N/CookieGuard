@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "CookieGuard - Session Shield",
+  "version": "1.2.0",
+  "description": "Monitor local en tiempo real de rotación de cookies de sesión críticas y defensa contra clonación de sesiones e infostealers.",
+  "permissions": [
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.google.com/*",
+    "*://*.github.com/*",
+    "*://*.microsoft.com/*",
+    "*://*.live.com/*",
+    "*://*.okta.com/*",
+    "*://*.amazon.com/*",
+    "*://*.slack.com/*",
+    "*://*.twitter.com/*",
+    "*://*.x.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "CookieGuard Session Shield"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

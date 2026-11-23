@@ -1,0 +1,36 @@
+#!/usr/bin/env bpftrace
+/*
+ * CookieGuard eBPF Kernel Probe (Linux 5.15+)
+ * Intercepta aperturas a nivel de kernel de bases de datos de cookies y claves maestras.
+ * Ejecutar con: sudo bpftrace cookieguard_sensor.bt
+ */
+
+BEGIN
+{
+  printf("🛡️  CookieGuard eBPF Kernel Sensor Activo. Monitoreando accesos a cookies...\n");
+  printf("%-8s %-16s %-6s %s\n", "HORA", "PROCESO", "PID", "FICHERO ACCEDIDO");
+}
+
+tracepoint:syscalls:sys_enter_openat
+{
+  $filename = str(args->filename);
+
+  // Filtrar accesos a Cookies, Local State o cookies.sqlite
+  if (strcontains($filename, "Cookies") ||
+      strcontains($filename, "cookies.sqlite") ||
+      strcontains($filename, "Local State") ||
+      strcontains($filename, "key4.db"))
+  {
+    // Ignorar si el proceso es el propio navegador legitimo
+    if (comm != "chrome" && comm != "firefox" && comm != "brave" && comm != "msedge" && comm != "python3")
+    {
+      time("%H:%M:%S ");
+      printf("🚨 %-16s %-6d %s\n", comm, pid, $filename);
+    }
+  }
+}
+
+END
+{
+  printf("\n🛡️  CookieGuard eBPF Sensor detenido.\n");
+}
