@@ -16,6 +16,7 @@ class TestProcessHunter(unittest.TestCase):
         self.assertEqual(res["sospechosos_count"], 0)
 
     @patch("cookieguard.process_hunter.IS_WIN", True)
+    @patch("cookieguard.process_hunter.IS_LINUX", False)
     def test_masquerading_detection(self):
         procs = [
             {"pid": 666, "ppid": 1, "name": "svchost.exe", "cmd": "svchost.exe",
@@ -41,6 +42,7 @@ class TestProcessHunter(unittest.TestCase):
         s = res["sospechosos"][0]
         self.assertIn("PowerShell con comando codificado", s["motivo"])
 
+    @patch("cookieguard.process_hunter.IS_WIN", False)
     @patch("cookieguard.process_hunter.IS_LINUX", True)
     def test_linux_tmp_binary(self):
         procs = [
