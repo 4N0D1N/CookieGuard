@@ -82,7 +82,10 @@ class TmpHome(unittest.TestCase):
             os.environ.pop("COOKIEGUARD_HOME", None)
         else:
             os.environ["COOKIEGUARD_HOME"] = self._old
-        self._td.cleanup()
+        try:
+            self._td.cleanup()
+        except Exception:
+            pass
 
     def sample_rows(self):
         now = datetime.now()
