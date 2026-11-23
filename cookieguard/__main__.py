@@ -143,6 +143,15 @@ def main(argv=None):
     pb.add_argument("--formato", choices=["html", "md", "ambos"], default="ambos", help="Formato del playbook")
     pb.add_argument("--salida", type=str, default=None, help="Carpeta o archivo de salida")
 
+    crt = sub.add_parser("certs", help="Audita certificados raíz de intercepción y configuración de proxies locales MITM")
+    crt.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    dbi = sub.add_parser("db-integrity", help="Audita la integridad física, time-stomping y bloqueos en SQLite de navegadores")
+    dbi.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    sce = sub.add_parser("scan-extensions", help="Escanea el código de extensiones instaladas buscando firmas de exfiltración y C2")
+    sce.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
@@ -475,6 +484,64 @@ def main(argv=None):
         for g in generados:
             print(f"  - {g}")
         return 0
+    elif args.cmd == "certs":
+        from . import cert_audit
+        res = cert_audit.audit_certificates_and_proxies()
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== AUDITORÍA DE CERTIFICADOS RAÍZ Y PROXIES ({res['certificados_analizados']} certs revisados, {res['total_alertas']} alertas) ===")
+            if res["proxy"]["system_proxy_enabled"] or res["proxy"]["env_proxies"]:
+                print(f"  [PROXY] Estado: {'ACTIVO' if res['proxy']['system_proxy_enabled'] else 'Por variables de entorno'}")
+                if res["proxy"]["proxy_server"]:
+                    print(f"      Servidor: {res['proxy']['proxy_server']}")
+                for k, v in res["proxy"]["env_proxies"].items():
+                    print(f"      Env {k}: {v}")
+            else:
+                print("  [PROXY] No se detectaron proxies de sistema ni variables de entorno activas.")
+            if res["alertas"]:
+                print("\n  [ALERTAS DETECTADAS]:")
+                for a in res["alertas"]:
+                    print(f"    - [{a.get('severidad', 'Media')}] {a.get('descripcion')}")
+                if res.get("recomendacion"):
+                    print(f"\n  Recomendación: {res['recomendacion']}")
+            else:
+                print("  [OK] No se detectaron certificados CA de depuración/MITM ni proxies anómalos.")
+        return 0 if not res["alertas"] else 1
+    elif args.cmd == "db-integrity":
+        from . import db_integrity
+        res = db_integrity.audit_browser_databases()
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== AUDITORÍA DE INTEGRIDAD DE BASES DE DATOS SQLITE ({res['total_dbs_analizadas']} DBs, {res['total_alertas']} alertas) ===")
+            for db in res["bases_de_datos"]:
+                estado = "ALERTA" if db["hallazgos"] else "OK"
+                print(f"  [{estado}] {db.get('navegador', 'Navegador')} ({db.get('perfil', 'Default')}) - {db['nombre']}")
+                print(f"      Tamaño: {db['tamano_bytes']} bytes | Page size: {db['page_size']} | Freelist: {db['freelist_count']}")
+                if db.get("quick_check"):
+                    print(f"      quick_check: {db['quick_check']} | WAL: {'SÍ' if db['wal_presente'] else 'NO'}")
+                for h in db["hallazgos"]:
+                    print(f"      - [{h['severidad']}] {h['descripcion']}")
+        return 0 if res.get("total_alertas", 0) == 0 else 1
+    elif args.cmd == "scan-extensions":
+        from . import extension_scanner
+        res = extension_scanner.scan_all_browser_extensions()
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== ESCÁNER DE CÓDIGO DE EXTENSIONES ({res['total_extensiones_analizadas']} analizadas, {res['total_alertas']} con alertas) ===")
+            if res["alertas"]:
+                for a in res["alertas"]:
+                    print(f"  [ALERTA] {a['nombre']} ({a['navegador']} - {a['perfil']})")
+                    for h in a["hallazgos"]:
+                        print(f"      - [{h['severidad']}] {h['archivo']}: {h['descripcion']} ({h['coincidencias']} coincidencias)")
+            else:
+                print("  [OK] No se detectaron firmas maliciosas ni canales C2 en el código de las extensiones.")
+        return 0 if not res["alertas"] else 1
     elif args.cmd == "extensions":
         from . import extensions
         res = extensions.audit_browser_extensions()

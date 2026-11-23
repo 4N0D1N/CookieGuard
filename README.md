@@ -2,7 +2,7 @@
 
 > **Auditor local heurístico de metadatos de sesiones de navegador, con alertas y herramientas de respuesta guiada. No descifra valores de cookies y no sustituye a un EDR o antivirus.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.7.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.8.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
@@ -57,6 +57,26 @@ CookieGuard inspecciona metadatos locales de perfiles de navegador y presenta se
 
 ---
 
+
+## 🚀 Novedades de la Versión 1.8.0
+
+- **🔐 Auditoría de certificados raíz y proxies locales (`cookieguard certs`):**
+  - Detecta certificados CA de intercepción TLS (Adversary-in-the-Middle / MITM, MITRE ATT&CK T1557 / T1556) instalados en el almacén `ROOT` de Windows o en el sistema (Fiddler, Charles, Burp Suite, mitmproxy, mkcert, OWASP ZAP).
+  - Identifica proxies locales (`127.0.0.1`, `localhost`) activos en variables de entorno (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`) o en el registro de Windows (`HKCU\...\Internet Settings`), así como ficheros PAC automáticos no autorizados.
+- **🗄️ Integridad forense de bases de datos SQLite y Time-Stomping (`cookieguard db-integrity`):**
+  - Inspecciona la cabecera física (magic bytes `SQLite format 3\000`), el tamaño de página y el estado de integridad lógica (`PRAGMA quick_check`).
+  - Detecta técnicas de *Time-Stomping* y manipulación: alerta si la marca de tiempo del archivo WAL/SHM está desincronizada respecto a la base de datos principal.
+  - Alerta ante anomalías de *freelist* (más del 40% de páginas libres), indicio de borrado masivo de registros para eliminar huellas tras exfiltración.
+- **🧩 Escáner heurístico de código de extensiones (`cookieguard scan-extensions`):**
+  - Escanea scripts `.js`, `.json` y `.html` en extensiones instaladas buscando patrones de exfiltración e inyección C2:
+    - Webhooks de Discord (`discord.com/api/webhooks/...`).
+    - Bots de Telegram C2 (`api.telegram.org/bot.../sendMessage`).
+    - Extracción masiva de cookies por API (`chrome.cookies.getAll`, `browser.cookies.getAll`, `sendBeacon`).
+    - Inyección y ofuscación dinámica (`eval(atob(...))`, `debugger.attach`).
+- **💻 Cobertura ampliada de aplicaciones de escritorio SaaS y Electron:**
+  - Nuevos objetivos en el auditor de sesiones de escritorio (`cookieguard desktop`): **Postman Desktop** (tokens de API Bearer y variables de entorno críticas), **Slack Desktop**, **Obsidian Desktop** y **Notion Desktop**.
+
+---
 
 ## 🚀 Novedades de la Versión 1.7.0
 

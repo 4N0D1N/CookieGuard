@@ -129,6 +129,78 @@ def get_desktop_session_targets() -> list[dict[str, Any]]:
         "consejo": "Cierra sesiones en todos los dispositivos desde Ajustes de Steam > Administrar Steam Guard y cambia tu contrasena."
     })
 
+    # 5. Postman Desktop (Tokens de API y colecciones)
+    if IS_WIN:
+        appdata = os.environ.get("APPDATA") or str(home / "AppData" / "Roaming")
+        postman_path = Path(appdata) / "Postman"
+    else:
+        postman_path = home / ".config" / "Postman"
+
+    targets.append({
+        "app": "Postman Desktop",
+        "categoria": "Herramienta de Desarrollo / Tokens API",
+        "tipo": "electron_app",
+        "ruta": postman_path,
+        "archivos_clave": ["IndexedDB", "Partitions", "*.json"],
+        "proceso_legitimo": ["Postman.exe", "postman"],
+        "criticidad": "CRITICA",
+        "consejo": "Rota inmediatamente las API Keys, Bearer tokens y secretos de entorno guardados en colecciones de Postman."
+    })
+
+    # 6. Slack Desktop
+    if IS_WIN:
+        appdata = os.environ.get("APPDATA") or str(home / "AppData" / "Roaming")
+        slack_path = Path(appdata) / "Slack" / "Local Storage" / "leveldb"
+    else:
+        slack_path = home / ".config" / "Slack" / "Local Storage" / "leveldb"
+
+    targets.append({
+        "app": "Slack Desktop",
+        "categoria": "Comunicacion / Equipos",
+        "tipo": "electron_app",
+        "ruta": slack_path,
+        "archivos_clave": ["*.ldb", "*.log"],
+        "proceso_legitimo": ["slack.exe", "slack"],
+        "criticidad": "ALTA",
+        "consejo": "Cierra sesiones activas desde my.slack.com/account/settings#sessions y solicita revocacion al admin de tu Workspace."
+    })
+
+    # 7. Obsidian Desktop
+    if IS_WIN:
+        appdata = os.environ.get("APPDATA") or str(home / "AppData" / "Roaming")
+        obsidian_path = Path(appdata) / "obsidian"
+    else:
+        obsidian_path = home / ".config" / "obsidian"
+
+    targets.append({
+        "app": "Obsidian Desktop",
+        "categoria": "Gestion de Conocimiento / Sync",
+        "tipo": "electron_app",
+        "ruta": obsidian_path,
+        "archivos_clave": ["IndexedDB", "obsidian-*.json"],
+        "proceso_legitimo": ["Obsidian.exe", "obsidian"],
+        "criticidad": "MEDIA",
+        "consejo": "Revisa tokens de sincronizacion Obsidian Sync y credenciales de plugins comunitarios."
+    })
+
+    # 8. Notion Desktop
+    if IS_WIN:
+        appdata = os.environ.get("APPDATA") or str(home / "AppData" / "Roaming")
+        notion_path = Path(appdata) / "Notion"
+    else:
+        notion_path = home / ".config" / "Notion"
+
+    targets.append({
+        "app": "Notion Desktop",
+        "categoria": "Productividad y Notas",
+        "tipo": "electron_app",
+        "ruta": notion_path,
+        "archivos_clave": ["Local Storage", "Partitions"],
+        "proceso_legitimo": ["Notion.exe", "notion"],
+        "criticidad": "MEDIA",
+        "consejo": "Cierra sesiones en todos los dispositivos desde Ajustes > Mi cuenta en Notion."
+    })
+
     return targets
 
 
