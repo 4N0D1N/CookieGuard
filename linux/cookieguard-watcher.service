@@ -1,0 +1,13 @@
+[Unit]
+Description=CookieGuard Real-time Session Watcher
+Documentation=https://github.com/4N0D1N/CookieGuard
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -m cookieguard.watcher
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,104 @@
+<!--
+  CookieGuard - configuracion minima de Sysmon para detectar robo de cookies/credenciales del navegador.
+  Genera SOLO los eventos que usa CookieGuard (poco ruido):
+    1  Creacion de proceso con flags de depuracion remota / headless / carga de extension
+    3  Conexiones de red hacia destinos tipicos de exfiltracion
+    10 Acceso a la memoria de navegadores y del servicio de elevacion (App-Bound Encryption)
+    11 Creacion de COPIAS de bases de cookies/contrasenas
+    22 Consultas DNS a destinos de exfiltracion
+  Instalar:  sysmon64 -accepteula -i sysmon-cookieguard.xml      Actualizar: sysmon64 -c sysmon-cookieguard.xml
+  Desinstalar: sysmon64 -u force
+  Ideas de partida: SwiftOnSecurity/sysmon-config y olafhartong/sysmon-modular (ver docs/Investigacion.md).
+-->
+<Sysmon schemaversion="4.90">
+  <HashAlgorithms>sha256</HashAlgorithms>
+  <EventFiltering>
+
+    <RuleGroup name="CG-Proceso-flags" groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <CommandLine condition="contains any">--remote-debugging-port;--remote-debugging-pipe;--remote-allow-origins;--load-extension;--disable-extensions-except</CommandLine>
+        <CommandLine condition="contains all">--headless;--user-data-dir</CommandLine>
+      </ProcessCreate>
+    </RuleGroup>
+
+    <RuleGroup name="CG-Red-exfil" groupRelation="or">
+      <NetworkConnect onmatch="include">
+        <DestinationHostname condition="end with">api.telegram.org</DestinationHostname>
+        <DestinationHostname condition="end with">transfer.sh</DestinationHostname>
+        <DestinationHostname condition="end with">file.io</DestinationHostname>
+        <DestinationHostname condition="end with">gofile.io</DestinationHostname>
+        <DestinationHostname condition="end with">pastebin.com</DestinationHostname>
+        <DestinationHostname condition="end with">ngrok.io</DestinationHostname>
+        <DestinationHostname condition="end with">ngrok-free.app</DestinationHostname>
+        <DestinationHostname condition="end with">trycloudflare.com</DestinationHostname>
+        <DestinationHostname condition="contains">discord.com/api/webhooks</DestinationHostname>
+      </NetworkConnect>
+    </RuleGroup>
+
+    <RuleGroup name="CG-Memoria-navegador" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <TargetImage condition="end with">\chrome.exe</TargetImage>
+        <TargetImage condition="end with">\msedge.exe</TargetImage>
+        <TargetImage condition="end with">\brave.exe</TargetImage>
+        <TargetImage condition="end with">\opera.exe</TargetImage>
+        <TargetImage condition="end with">\vivaldi.exe</TargetImage>
+        <TargetImage condition="end with">\firefox.exe</TargetImage>
+        <TargetImage condition="end with">\elevation_service.exe</TargetImage>
+      </ProcessAccess>
+    </RuleGroup>
+    <RuleGroup name="CG-Memoria-excluir-ruido" groupRelation="or">
+      <ProcessAccess onmatch="exclude">
+        <SourceImage condition="end with">\chrome.exe</SourceImage>
+        <SourceImage condition="end with">\msedge.exe</SourceImage>
+        <SourceImage condition="end with">\brave.exe</SourceImage>
+        <SourceImage condition="end with">\firefox.exe</SourceImage>
+        <SourceImage condition="end with">\MsMpEng.exe</SourceImage>
+        <SourceImage condition="end with">\csrss.exe</SourceImage>
+        <SourceImage condition="end with">\wininit.exe</SourceImage>
+        <SourceImage condition="end with">\lsass.exe</SourceImage>
+        <SourceImage condition="end with">\svchost.exe</SourceImage>
+        <SourceImage condition="end with">\services.exe</SourceImage>
+        <SourceImage condition="end with">\WerFault.exe</SourceImage>
+        <SourceImage condition="begin with">C:\Program Files\Windows Defender\</SourceImage>
+        <SourceImage condition="begin with">C:\ProgramData\Microsoft\Windows Defender\</SourceImage>
+      </ProcessAccess>
+    </RuleGroup>
+
+    <RuleGroup name="CG-Copias-BD" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="end with">\Cookies</TargetFilename>
+        <TargetFilename condition="end with">\Login Data</TargetFilename>
+        <TargetFilename condition="end with">\Web Data</TargetFilename>
+        <TargetFilename condition="end with">cookies.sqlite</TargetFilename>
+        <TargetFilename condition="end with">key4.db</TargetFilename>
+        <TargetFilename condition="end with">logins.json</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+    <RuleGroup name="CG-Copias-excluir-navegador" groupRelation="or">
+      <FileCreate onmatch="exclude">
+        <Image condition="end with">\chrome.exe</Image>
+        <Image condition="end with">\msedge.exe</Image>
+        <Image condition="end with">\brave.exe</Image>
+        <Image condition="end with">\firefox.exe</Image>
+        <Image condition="end with">\opera.exe</Image>
+        <Image condition="end with">\vivaldi.exe</Image>
+        <Image condition="end with">\MsMpEng.exe</Image>
+      </FileCreate>
+    </RuleGroup>
+
+    <RuleGroup name="CG-DNS-exfil" groupRelation="or">
+      <DnsQuery onmatch="include">
+        <QueryName condition="end with">api.telegram.org</QueryName>
+        <QueryName condition="end with">transfer.sh</QueryName>
+        <QueryName condition="end with">file.io</QueryName>
+        <QueryName condition="end with">gofile.io</QueryName>
+        <QueryName condition="end with">pastebin.com</QueryName>
+        <QueryName condition="end with">ngrok.io</QueryName>
+        <QueryName condition="end with">ngrok-free.app</QueryName>
+        <QueryName condition="end with">trycloudflare.com</QueryName>
+        <QueryName condition="end with">catbox.moe</QueryName>
+      </DnsQuery>
+    </RuleGroup>
+
+  </EventFiltering>
+</Sysmon>

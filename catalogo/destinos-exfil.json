@@ -1,0 +1,30 @@
+{
+  "_version": "2026-11",
+  "_nota": "Destinos que los infostealers usan habitualmente para sacar datos. Un acceso a estos dominios NO es malicioso por si solo (muchos son legitimos): es un indicio que se combina con los demas.",
+  "dominios": [
+    {"patron": "api.telegram.org", "tipo": "Telegram Bot API", "peso": 8, "nota": "Canal C2/exfiltracion muy usado por Lumma, RedLine, Vidar, StealC..."},
+    {"patron": "discord.com/api/webhooks", "tipo": "Webhook Discord", "peso": 8},
+    {"patron": "discordapp.com/api/webhooks", "tipo": "Webhook Discord", "peso": 8},
+    {"patron": "pastebin.com", "tipo": "Pegado publico", "peso": 4},
+    {"patron": "paste.ee", "tipo": "Pegado publico", "peso": 4},
+    {"patron": "hastebin.com", "tipo": "Pegado publico", "peso": 4},
+    {"patron": "transfer.sh", "tipo": "Subida anonima", "peso": 6},
+    {"patron": "file.io", "tipo": "Subida anonima", "peso": 6},
+    {"patron": "anonfiles", "tipo": "Subida anonima", "peso": 6},
+    {"patron": "gofile.io", "tipo": "Subida anonima", "peso": 6},
+    {"patron": "catbox.moe", "tipo": "Subida anonima", "peso": 6},
+    {"patron": "0x0.st", "tipo": "Subida anonima", "peso": 6},
+    {"patron": "ngrok.io", "tipo": "Tunel", "peso": 5},
+    {"patron": "ngrok-free.app", "tipo": "Tunel", "peso": 5},
+    {"patron": "trycloudflare.com", "tipo": "Tunel", "peso": 5},
+    {"patron": "serveo.net", "tipo": "Tunel", "peso": 5},
+    {"patron": "duckdns.org", "tipo": "DNS dinamico", "peso": 3},
+    {"patron": "no-ip.org", "tipo": "DNS dinamico", "peso": 3},
+    {"patron": "steamcommunity.com/profiles", "tipo": "Dead-drop resolver (Vidar/Lumma)", "peso": 2}
+  ],
+  "regex": [
+    {"patron": "^\\d{1,3}(\\.\\d{1,3}){3}$", "tipo": "IP directa en cache DNS", "peso": 2}
+  ],
+  "archivos_stealer": ["passwords.txt", "cookies.txt", "autofill.txt", "credit_cards.txt", "wallets.txt", "system_info.txt", "userinfo.txt", "all_passwords.txt", "cookies_netscape.txt", "browsers.txt", "forms.txt"],
+  "herramientas_abe": ["chromekatz", "chrome_decrypt", "chromelevator", "abe_decrypt", "cookie-monster", "chrome-app-bound", "chromedecrypt", "cookie_decryptor"]
+}
