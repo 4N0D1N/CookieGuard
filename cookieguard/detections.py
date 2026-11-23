@@ -1072,8 +1072,10 @@ def i14(ctx: Ctx):
 
     # 4. En Windows, revisar logs de Sysmon Event ID 11 (FileCreate) o Event ID 10 para Local State
     if IS_WIN:
-        sys11 = _sysmon([11], count=200)
-        for ev in sys11:
+        st, evs = _sysmon([11], count=200)
+        for ev in evs if st == "ok" else []:
+            if not isinstance(ev, dict):
+                continue
             fn = (ev.get("TargetFilename") or "").lower()
             img = (ev.get("Image") or "").lower()
             if "local state" in fn and not any(b in img for b in ctx.whitelist):

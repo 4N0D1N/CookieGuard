@@ -3,16 +3,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
   chrome.storage.local.get({ events: [] }, (data) => {
     if (!data.events || data.events.length === 0) {
-      listEl.innerHTML = '<div style="color: #64748b; text-align: center; padding: 8px;">Supervisión activa. Sin cambios recientes.</div>';
+      listEl.textContent = "";
+      const emptyDiv = document.createElement("div");
+      emptyDiv.style.color = "#64748b";
+      emptyDiv.style.textAlign = "center";
+      emptyDiv.style.padding = "8px";
+      emptyDiv.textContent = "Supervisión activa. Sin cambios recientes.";
+      listEl.appendChild(emptyDiv);
       return;
     }
 
-    listEl.innerHTML = "";
+    listEl.textContent = "";
     data.events.slice(0, 15).forEach((ev) => {
       const timeStr = ev.timestamp ? ev.timestamp.split("T")[1].slice(0, 8) : "";
       const div = document.createElement("div");
       div.className = "event-item";
-      div.innerHTML = `<span class="event-time">[${timeStr}]</span> <span class="event-domain">${ev.domain}</span>: ${ev.name} (${ev.removed ? 'Eliminada' : 'Modificada'})`;
+
+      const spanTime = document.createElement("span");
+      spanTime.className = "event-time";
+      spanTime.textContent = `[${timeStr}] `;
+
+      const spanDomain = document.createElement("span");
+      spanDomain.className = "event-domain";
+      spanDomain.textContent = String(ev.domain || "");
+
+      const spanDetails = document.createElement("span");
+      spanDetails.textContent = `: ${String(ev.name || "")} (${ev.removed ? "Eliminada" : "Modificada"})`;
+
+      div.appendChild(spanTime);
+      div.appendChild(spanDomain);
+      div.appendChild(spanDetails);
       listEl.appendChild(div);
     });
   });
