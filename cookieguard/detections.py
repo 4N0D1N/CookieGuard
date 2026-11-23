@@ -1229,7 +1229,7 @@ def i18(ctx: Ctx):
             r["puntos"] = ctx.pts(r["id"], 1.0)
             hallazgos = []
             for a in res.get("alertas", []):
-                hallazgos.append(f"[{a.get("tipo")}] {a.get("fichero")}: {a.get("detalle")}")
+                hallazgos.append(f"[{a.get('tipo')}] {a.get('fichero')}: {a.get('detalle')}")
             r["hallazgos"] = hallazgos
             r["resumen"] = res.get("resumen")
         elif res.get("activo"):
@@ -1259,7 +1259,7 @@ def i19(ctx: Ctx):
             r["puntos"] = ctx.pts(r["id"], 1.0)
             hallazgos = []
             for a in res.get("anomalias", []):
-                hallazgos.append(f"PID {a.get("pid")} ({a.get("proceso")}): [{a.get("tipo")}] {a.get("ruta")} - {a.get("motivo")}")
+                hallazgos.append(f"PID {a.get('pid')} ({a.get('proceso')}): [{a.get('tipo')}] {a.get('ruta')} - {a.get('motivo')}")
             r["hallazgos"] = hallazgos
             r["resumen"] = f"¡Alerta! {len(hallazgos)} módulo(s) inyectado(s) o sospechoso(s) en navegadores"
         else:
