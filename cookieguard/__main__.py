@@ -131,6 +131,18 @@ def main(argv=None):
     dec.add_argument("archivo", help="Ruta al archivo .cgenc")
     dec.add_argument("--salida", type=str, default=None, help="Ruta destino del ZIP")
 
+
+    shc = sub.add_parser("shortcuts", help="Audita accesos directos de navegador (.lnk y .desktop) buscando inyecciones de flags o proxies")
+    shc.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    syn = sub.add_parser("sync", help="Audita cuentas sincronizadas y perfiles de navegador buscando sincronización no autorizada")
+    syn.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    syn.add_argument("--sin-anonimizar", action="store_true", help="Muestra direcciones de correo completas")
+
+    pb = sub.add_parser("playbook", help="Genera playbook interactivo y checklist de revocación de sesiones (HTML y Markdown)")
+    pb.add_argument("--formato", choices=["html", "md", "ambos"], default="ambos", help="Formato del playbook")
+    pb.add_argument("--salida", type=str, default=None, help="Carpeta o archivo de salida")
+
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
@@ -405,6 +417,64 @@ def main(argv=None):
         else:
             print("Uso: cookieguard dns-canary {generate|list|check}")
             return 2
+
+    elif args.cmd == "shortcuts":
+        from . import shortcuts_audit
+        res = shortcuts_audit.audit_shortcuts()
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== AUDITORÍA DE ACCESOS DIRECTOS ({res['total_analizados']} analizados, {res['total_alertas']} alertas) ===")
+            if res["alertas"]:
+                for a in res["alertas"]:
+                    print(f"  [ALERTA] {a['nombre']} ({a['archivo']})")
+                    for h in a["hallazgos"]:
+                        print(f"      - [{h['severidad']}] {h['descripcion']}")
+                    if a.get("recomendacion"):
+                        print(f"      Recomendación: {a['recomendacion']}")
+            else:
+                print("  [OK] No se detectaron flags sospechosos ni secuestro de accesos directos.")
+        return 0 if not res["alertas"] else 1
+    elif args.cmd == "sync":
+        from . import sync_audit
+        res = sync_audit.audit_all_profiles_sync(anonymize=not getattr(args, "sin_anonimizar", False))
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== AUDITORÍA DE SINCRONIZACIÓN DE PERFILES ({res['total_perfiles']} perfiles, {res['perfiles_con_sync']} con sync activo) ===")
+            for p in res["perfiles"]:
+                sync_mark = "SYNC ACTIVO" if p["sync_activo"] else "Sin sync"
+                print(f"  [{sync_mark}] {p['navegador']} - {p['perfil']}")
+                if p["cuentas"]:
+                    for c in p["cuentas"]:
+                        print(f"      Cuenta: {c.get('email', '(sin email)')} ({c.get('dominio', '')})")
+                if p["servicios_sincronizados"]:
+                    print(f"      Datos: {', '.join(p['servicios_sincronizados'])}")
+                if p["hallazgos"]:
+                    for h in p["hallazgos"]:
+                        print(f"      - {h}")
+        return 0
+    elif args.cmd == "playbook":
+        from pathlib import Path
+        from . import playbooks
+        fmt = getattr(args, "formato", "ambos")
+        salida = getattr(args, "salida", None)
+        out_p = Path(salida) if salida else None
+        generados = []
+        if fmt in ("html", "ambos"):
+            dest_html = out_p if (out_p and str(out_p).endswith(".html")) else (out_p / "checklist_revocacion.html" if out_p else None)
+            path_html = playbooks.generate_playbook_html(output_path=dest_html)
+            generados.append(str(path_html))
+        if fmt in ("md", "ambos"):
+            dest_md = out_p if (out_p and str(out_p).endswith(".md")) else (out_p / "PLAYBOOK_REVOCACION.md" if out_p else None)
+            path_md = playbooks.generate_playbook_markdown(output_path=dest_md)
+            generados.append(str(path_md))
+        print("Playbook(s) de revocación generados con éxito:")
+        for g in generados:
+            print(f"  - {g}")
+        return 0
     elif args.cmd == "extensions":
         from . import extensions
         res = extensions.audit_browser_extensions()

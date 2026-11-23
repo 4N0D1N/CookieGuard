@@ -2,7 +2,7 @@
 
 > **Auditor local heurístico de metadatos de sesiones de navegador, con alertas y herramientas de respuesta guiada. No descifra valores de cookies y no sustituye a un EDR o antivirus.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.6.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.7.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
@@ -57,6 +57,24 @@ CookieGuard inspecciona metadatos locales de perfiles de navegador y presenta se
 
 ---
 
+
+## 🚀 Novedades de la Versión 1.7.0
+
+- **🔗 Auditoría de accesos directos e inicio (`cookieguard shortcuts`):**
+  - Analiza accesos directos `.lnk` (Windows) y `.desktop` (Linux) en el Escritorio, Menú de Inicio, Barra de Tareas y carpetas de autostart.
+  - Detecta técnicas de persistencia y secuestro (*Browser Shortcut Hijacking*, MITRE ATT&CK T1547 / T1059 / T1204): inyección de flags anómalos (`--load-extension`, `--proxy-server`, `--disable-web-security`, `--remote-debugging-port`), ejecutables en carpetas temporales o wrappers intermediarios (`powershell`, `cmd /c`, `mshta`, `bash`, `curl`).
+  - Salida humana estructurada o en JSON con `--json`.
+- **🔄 Auditoría de sincronización y cuentas de perfil (`cookieguard sync`):**
+  - Inspecciona la configuración de sincronización en `Preferences` (Chromium/Edge) y `signedInUser.json` / `prefs.js` (Firefox).
+  - Identifica qué cuentas están vinculadas al navegador, si la sincronización hacia la nube está activa y qué datos se replican (contraseñas, cookies, historial, extensiones).
+  - Alerta ante anomalías como múltiples cuentas en un mismo perfil o perfiles sin cuenta identificable pero con sync activo.
+  - Anonimización/enmascaramiento de direcciones de correo por defecto para auditorías externas (`--sin-anonimizar` para inspección forense interna).
+- **📋 Playbooks interactivos de revocación y triage (`cookieguard playbook`):**
+  - Catálogo integrado con más de 35 servicios críticos (Google Workspace, Microsoft 365, AWS, GitHub, Slack, Discord, Stripe, PayPal, Binance, OpenAI, etc.).
+  - **Checklist HTML offline interactiva (`checklist_revocacion.html`):** Interfaz responsive auto-contenida (sin CDNs ni dependencias) con enlaces directos a consolas de "Cerrar sesión en todos los dispositivos", cambio de contraseña y permisos OAuth. Guarda el progreso en el `localStorage` del navegador.
+  - **Guía de respuesta en Markdown (`PLAYBOOK_REVOCACION.md`):** Formato estructurado con tareas de contención para adjuntar a incidencias del SOC o tickets de soporte.
+
+---
 
 ## 🛡️ Novedades de seguridad de v1.6.0
 
