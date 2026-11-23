@@ -26,10 +26,17 @@ from .triage import run_triage
 
 def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
     """Ejecuta una bateria de pruebas de simulacion de ataque en un entorno temporal aislado."""
-    print("=" * 70)
-    print("🛡️  COOKIEGUARD - SIMULADOR DE ESCENARIOS DE ATAQUE (TEST HARNESS)")
-    print("=" * 70)
-    print("Ejecutando pruebas inocuas para verificar detectores, alertas y triaje...\n")
+    def _p(msg: str = "") -> None:
+        if interactive:
+            try:
+                print(msg)
+            except UnicodeEncodeError:
+                print(msg.encode("ascii", errors="replace").decode("ascii"))
+
+    _p("=" * 70)
+    _p("[CookieGuard] SIMULADOR DE ESCENARIOS DE ATAQUE (TEST HARNESS)")
+    _p("=" * 70)
+    _p("Ejecutando pruebas inocuas para verificar detectores, alertas y triaje...\n")
 
     pruebas: list[dict[str, Any]] = []
     temp_dir = Path(tempfile.mkdtemp(prefix="cookieguard_sim_"))
@@ -38,7 +45,7 @@ def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
         # -------------------------------------------------------------
         # Escenario 1: Creacion de BD de cookies simulada y acceso ajeno
         # -------------------------------------------------------------
-        print("  [1/4] Simulando base de datos de cookies y acceso de proceso no autorizado...")
+        _p("  [1/4] Simulando base de datos de cookies y acceso de proceso no autorizado...")
         db_path = temp_dir / "Default" / "Network" / "Cookies"
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -66,7 +73,6 @@ def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
                 is_same_party INTEGER NOT NULL
             )
         """)
-        # Insertar registros dummy inocuos
         cur.execute("""
             INSERT INTO cookies (creation_utc, host_key, top_frame_site_key, name, value,
                                  dummy_blob, path, expires_utc, is_secure, is_httponly,
@@ -79,7 +85,6 @@ def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
         con.commit()
         con.close()
 
-        # Simular lectura ajena
         with open(db_path, "rb") as fh:
             _ = fh.read(128)
 
@@ -88,12 +93,12 @@ def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
             "resultado": "PASADA",
             "detalle": f"BD simulada creada en {db_path.name} y leida correctamente en sandbox aislado."
         })
-        print("        -> OK: Entorno de pruebas y lectura inocua completados.")
+        _p("        -> OK: Entorno de pruebas y lectura inocua completados.")
 
         # -------------------------------------------------------------
         # Escenario 2: Verificacion de Coincidencia de IoC (Threat Intelligence)
         # -------------------------------------------------------------
-        print("  [2/4] Verificando motor de IoCs frente a patrones de stealer...")
+        _p("  [2/4] Verificando motor de IoCs frente a patrones de stealer...")
         test_hash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         test_proc = "stealc.exe"
         test_cmd = "powershell.exe -enc aW52b2tlLWV4cHJlc3Npb24gJ3Rlc3Qn"
@@ -105,41 +110,19 @@ def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
                 "resultado": "PASADA",
                 "detalle": f"Se identificaron {len(hits)} coincidencias de IoC (hash, nombre y comando codificado)."
             })
-            print(f"        -> OK: Motor de IoCs activo. {len(hits)} firmas detectadas satisfactoriamente.")
+            _p(f"        -> OK: Motor de IoCs activo. {len(hits)} firmas detectadas satisfactoriamente.")
         else:
             pruebas.append({
                 "prueba": "Deteccion de Indicadores de Compromiso (IoCs)",
                 "resultado": "FALLO",
                 "detalle": "El motor de IoCs no detecto las muestras de prueba."
             })
-            print("        -> AVISO: El motor de IoCs no devolvio las coincidencias esperadas.")
+            _p("        -> AVISO: El motor de IoCs no devolvio las coincidencias esperadas.")
 
         # -------------------------------------------------------------
         # Escenario 3: Generacion de Triaje Urgente y Checklist Forense
         # -------------------------------------------------------------
-        print("  [3/4] Generando informe de triaje urgente simulado (HTML + Checklist)...")
-        datos_simulados = {
-            "puntuacion_riesgo": 85,
-            "nivel_riesgo": "CRITICO",
-            "generado": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "resumen_sesiones": {
-                "criticas": 3,
-                "altas": 5,
-                "medias": 8,
-                "bajas": 12,
-                "total": 28
-            },
-            "sesiones_criticas": [
-                {"servicio": "Google / Gmail", "dominio": "google.com", "revocar_url": "https://myaccount.google.com/device-activity", "password_url": "https://myaccount.google.com/signinoptions/password"},
-                {"servicio": "GitHub", "dominio": "github.com", "revocar_url": "https://github.com/settings/sessions", "password_url": "https://github.com/settings/security"},
-                {"servicio": "Microsoft / Outlook", "dominio": "live.com", "revocar_url": "https://account.live.com/Activity", "password_url": "https://account.live.com/password/reset"}
-            ],
-            "hallazgos_forenses": [
-                {"indicador": "I15_procesos_infostealer", "severidad": "CRITICA", "titulo": "Proceso sospechoso en Temp", "detalle": "Simulacion: proceso con nombre stealc.exe ejecutandose desde carpeta temporal"},
-                {"indicador": "I16_ioc_malicioso", "severidad": "CRITICA", "titulo": "Coincidencia de IoC", "detalle": "Simulacion: hash SHA-256 catalogado como stealer activo"}
-            ]
-        }
-
+        _p("  [3/4] Generando informe de triaje urgente simulado (HTML + Checklist)...")
         archivos_triage = run_triage(salida_dir=temp_dir, open_report=False)
         if archivos_triage.get("html") and Path(archivos_triage["html"]).exists():
             pruebas.append({
@@ -147,7 +130,7 @@ def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
                 "resultado": "PASADA",
                 "detalle": f"Generados triaje HTML ({Path(archivos_triage['html']).name}) y checklist ({Path(archivos_triage['txt']).name})."
             })
-            print(f"        -> OK: Dossier de triaje generado en {Path(archivos_triage['html']).name}")
+            _p(f"        -> OK: Dossier de triaje generado en {Path(archivos_triage['html']).name}")
         else:
             pruebas.append({
                 "prueba": "Generacion de Panel de Triaje Forense",
@@ -158,7 +141,7 @@ def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
         # -------------------------------------------------------------
         # Escenario 4: Disparo de Alerta de Escritorio
         # -------------------------------------------------------------
-        print("  [4/4] Probando sistema de notificaciones de escritorio...")
+        _p("  [4/4] Probando sistema de notificaciones de escritorio...")
         try:
             notify("CookieGuard (Simulacion)", "Prueba de simulador superada con exito. El sistema de alertas esta operativo.", nivel="rojo")
             pruebas.append({
@@ -166,40 +149,39 @@ def run_attack_simulation(interactive: bool = True) -> dict[str, Any]:
                 "resultado": "PASADA",
                 "detalle": "Notificacion de escritorio emitida correctamente sin errores."
             })
-            print("        -> OK: Notificacion de escritorio emitida.")
+            _p("        -> OK: Notificacion de escritorio emitida.")
         except Exception as e:
             pruebas.append({
                 "prueba": "Sistema de Notificaciones",
                 "resultado": "AVISO",
                 "detalle": f"Notificacion emitida con fallback ({e})."
             })
-            print(f"        -> AVISO: Sistema grafico no disponible ({e}), fallback a log/terminal.")
+            _p(f"        -> AVISO: Sistema grafico no disponible ({e}), fallback a log/terminal.")
 
     finally:
-        # Limpieza absoluta de ficheros temporales
         try:
             shutil.rmtree(temp_dir, ignore_errors=True)
-            print("\n  [+] Limpieza de sandbox temporal completada. Cero residuos.")
+            _p("\n  [+] Limpieza de sandbox temporal completada. Cero residuos.")
         except Exception:
             pass
 
-    print("\n" + "=" * 70)
-    print("📊  RESULTADOS DEL SIMULADOR")
-    print("=" * 70)
+    _p("\n" + "=" * 70)
+    _p("RESULTADOS DEL SIMULADOR")
+    _p("=" * 70)
     todas_ok = True
     for p in pruebas:
         estado = p["resultado"]
-        simbolo = "✅" if estado == "PASADA" else ("⚠️" if estado == "AVISO" else "❌")
+        simbolo = "[OK]" if estado == "PASADA" else ("[AVISO]" if estado == "AVISO" else "[FALLO]")
         if estado == "FALLO":
             todas_ok = False
-        print(f" {simbolo} [{estado:7s}] {p['prueba']}")
-        print(f"             Detalle: {p['detalle']}")
+        _p(f" {simbolo:7s} [{estado:7s}] {p['prueba']}")
+        _p(f"             Detalle: {p['detalle']}")
 
-    print("=" * 70)
+    _p("=" * 70)
     if todas_ok:
-        print("✨  TODO CORRECTO: CookieGuard responde eficazmente a todos los escenarios.\n")
+        _p("[OK] TODO CORRECTO: Simulacion completada satisfactoriamente.\n")
     else:
-        print("⚠️  ATENCION: Revise las pruebas que no concluyeron satisfactoriamente.\n")
+        _p("[AVISO] ATENCION: Revise las pruebas que no concluyeron satisfactoriamente.\n")
 
     return {
         "completado": True,
