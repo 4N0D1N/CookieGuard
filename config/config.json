@@ -1,6 +1,9 @@
 {
   "_ayuda": "Edita este fichero o usa la pestana Ajustes. Los cambios del usuario se guardan aparte (carpeta de datos) y tienen prioridad.",
-  "umbrales": {"amarillo": 15, "rojo": 40},
+  "umbrales": {
+    "amarillo": 15,
+    "rojo": 40
+  },
   "puntos": {
     "I01_acceso_ficheros": 40,
     "I02_flags_navegador": 35,
@@ -13,14 +16,24 @@
     "I09_persistencia": 15,
     "I10_ejecutables": 12,
     "I11_manipulacion_red": 20,
-    "I12_anomalias_cookies": 10
+    "I12_anomalias_cookies": 10,
+    "I13_canary_cookie": 45
   },
-  "dias": {"zombie_sin_uso": 90, "zombie_caduca_en": 365, "caduca_pronto": 7, "sin_uso": 90, "ejecutables_recientes": 14},
+  "dias": {
+    "zombie_sin_uso": 90,
+    "zombie_caduca_en": 365,
+    "caduca_pronto": 7,
+    "sin_uso": 90,
+    "ejecutables_recientes": 14
+  },
   "silencioso": false,
   "notificar_verde": true,
   "vigilante_activo": false,
   "vigilante_intervalo_s": 10,
   "canary_activo": false,
   "canary_url": "",
-  "directorios_copias_sospechosas": []
+  "directorios_copias_sospechosas": [],
+  "webhook_activo": false,
+  "webhook_url": "",
+  "killswitch_activo": false
 }

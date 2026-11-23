@@ -338,3 +338,19 @@ def apply_hardening(check_id: str, undo: bool = False):
         return False, "Este ajuste no se puede aplicar automaticamente"
     code, out, err = ps(cmd, 60)
     return code == 0, (out + err).strip() or "Hecho"
+
+
+# ------------------------------------------------------------------ Killswitch de emergencia
+def killswitch_status() -> dict:
+    from . import killswitch
+    return killswitch.status()
+
+
+def enable_killswitch(dry_run: bool = False) -> tuple[bool, str]:
+    from . import killswitch
+    return killswitch.enable(dry_run=dry_run)
+
+
+def disable_killswitch(dry_run: bool = False) -> tuple[bool, str]:
+    from . import killswitch
+    return killswitch.disable(dry_run=dry_run)

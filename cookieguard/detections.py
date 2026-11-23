@@ -988,11 +988,42 @@ def i12(ctx: Ctx):
     return r
 
 
-INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12]
+
+# ------------------------------------------------------------------ I13 canary cookies
+def i13(ctx: Ctx):
+    r = mk("I13_canary_cookie", "Disparo o manipulacion de Canary Cookie (Senuelo)", "T1539",
+           "Las cookies senuelo (canary) detectan cualquier intento de volcado o manipulacion "
+           "de bases de datos por infostealers con 0% de falsos positivos.")
+    try:
+        from . import canary
+        res = canary.verify_canaries(ctx.profiles)
+        if res.get("disparados"):
+            r["estado"] = "alerta"
+            r["hallazgos"] = res.get("alertas", [])
+            r["puntos"] = ctx.pts(r["id"], 1.0)
+            r["resumen"] = f"¡Cebo trampa disparado! {len(r[hallazgos])} anomalia(s)"
+        elif res.get("activos", 0) > 0:
+            r["estado"] = "ok"
+            r["resumen"] = f"{res[activos]} cebo(s) canary vigilados e intactos"
+        else:
+            cfg = ctx.state.get("config", {})
+            if cfg.get("canary_activo"):
+                r["estado"] = "ok"
+                r["resumen"] = "Canarytoken externo activo"
+            else:
+                r["estado"] = "sin_datos"
+                r["resumen"] = "Sin cebos canary sembrados"
+                r["falta"] = "Sembrar cebos canary locales con el asistente (cookieguard canary)"
+    except Exception as e:
+        r["estado"] = "error"
+        r["resumen"] = f"Error comprobando canaries: {e}"
+    return r
+
+INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13]
 
 
 def run_all(ctx: Ctx, progress=None) -> list[dict]:
-    """Ejecuta los 12 indicadores en paralelo. Un fallo en uno no detiene a los demas."""
+    """Ejecuta los 13 indicadores en paralelo. Un fallo en uno no detiene a los demas."""
     results: dict = {}
 
     def _one(fn):
@@ -1006,7 +1037,7 @@ def run_all(ctx: Ctx, progress=None) -> list[dict]:
                          "i04": "I04_abe_elevation", "i05": "I05_extensiones", "i06": "I06_copias_bd",
                          "i07": "I07_red_exfil", "i08": "I08_defender", "i09": "I09_persistencia",
                          "i10": "I10_ejecutables", "i11": "I11_manipulacion_red",
-                         "i12": "I12_anomalias_cookies"}[fn.__name__]
+                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie"}[fn.__name__]
             res["estado"], res["resumen"] = "error", f"El indicador fallo ({type(e).__name__}); ver el log"
         res["segundos"] = round(time.time() - t0, 1)
         if progress:

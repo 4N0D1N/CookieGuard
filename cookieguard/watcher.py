@@ -187,6 +187,22 @@ class Watcher:
         log(f"ALERTA {titulo}: {motivo}")
         path = data_dir() / "tmp" / f"alerta_{int(time.time())}.json"
         path.write_text(json.dumps(al), encoding="utf-8")
+        if self.cfg.get("webhook_activo"):
+            try:
+                from . import webhook
+                webhook.send_alert({
+                    "nivel": "CRITICO",
+                    "resumen": f"{titulo}: {motivo}",
+                    "indicadores": [titulo]
+                })
+            except Exception as e:
+                log(f"Fallo webhook watcher: {e}")
+        if self.cfg.get("killswitch_auto_en_rojo"):
+            try:
+                from . import killswitch
+                killswitch.enable()
+            except Exception as e:
+                log(f"Fallo auto-killswitch: {e}")
         kw = {"creationflags": 0x08000000} if IS_WIN else {}
         subprocess.Popen([sys.executable, "-m", "cookieguard.watcher", "--alerta", str(path)],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, **kw)

@@ -13,7 +13,7 @@ from pathlib import Path
 IS_WIN = os.name == "nt"
 IS_LINUX = sys.platform.startswith("linux")
 APP_ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 _perm_done: set = set()
 
@@ -102,6 +102,9 @@ DEFAULT_CONFIG = {
     "vigilante_intervalo_s": 10,
     "canary_activo": False,
     "canary_url": "",
+    "webhook_activo": False,
+    "webhook_url": "",
+    "killswitch_activo": False,
     "directorios_copias_sospechosas": [],
     "extensiones_peligrosas": ["cookies", "<all_urls>", "webRequest", "webRequestBlocking", "debugger",
                                "nativeMessaging", "proxy", "*://*/*", "http://*/*", "https://*/*"],

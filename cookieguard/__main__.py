@@ -54,7 +54,19 @@ def main(argv=None):
     sub.add_parser("restaurar", help="Lista las copias de seguridad de cookies")
     r = sub.add_parser("restaurar-id")
     r.add_argument("id")
-    sub.add_parser("canary", help="Asistente de cookies canary")
+    cn = sub.add_parser("canary", help="Gestion y siembra de cookies canary (cebos)")
+    cn.add_argument("--plantar", action="store_true", help="Siembra cebos canary locales en todos los perfiles")
+    cn.add_argument("--comprobar", action="store_true", help="Comprueba integridad de los cebos")
+    cn.add_argument("--asistente", action="store_true", help="Abre asistente interactivo")
+
+    ks = sub.add_parser("killswitch", help="Control de aislamiento de red de emergencia")
+    ks.add_argument("--activar", action="store_true", help="Activa el corte de red saliente")
+    ks.add_argument("--desactivar", action="store_true", help="Restaura la red normal")
+    ks.add_argument("--estado", action="store_true", help="Muestra el estado actual")
+
+    wh = sub.add_parser("webhook", help="Notificaciones remotas por webhook (ntfy/Discord/Telegram)")
+    wh.add_argument("--probar", action="store_true", help="Envia alerta de prueba")
+    wh.add_argument("--url", type=str, help="Configura la URL del webhook")
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
@@ -110,7 +122,52 @@ def main(argv=None):
         print(actions.restore_backup(args.id))
     elif args.cmd == "canary":
         from . import canary
-        return canary.wizard_cli()
+        if getattr(args, "plantar", False):
+            n = canary.plant_all_profiles()
+            print(f"Sembrados {n} cebos canary en los perfiles disponibles.")
+            return 0
+        elif getattr(args, "comprobar", False):
+            res = canary.verify_canaries()
+            st_text = "Disparados: SI" if res["disparados"] else "Disparados: NO"
+            print(f"Estado de Canaries: {res['activos']} activos | {st_text}")
+            if res["disparados"]:
+                for a in res["alertas"]:
+                    print(f"  🚨 {a}")
+            return 0
+        else:
+            return canary.wizard_cli()
+    elif args.cmd == "killswitch":
+        from . import killswitch
+        if getattr(args, "activar", False):
+            ok, msg = killswitch.enable()
+            tag = "OK" if ok else "FALLO"
+            print(f"[{tag}] {msg}")
+            return 0 if ok else 1
+        elif getattr(args, "desactivar", False):
+            ok, msg = killswitch.disable()
+            tag = "OK" if ok else "FALLO"
+            print(f"[{tag}] {msg}")
+            return 0 if ok else 1
+        else:
+            st = killswitch.status()
+            st_str = "ACTIVO (Aislado)" if st.get("activo") else "Desactivado (Normal)"
+            print(f"Killswitch de Red: {st_str}")
+            if st.get("detalles"):
+                print(f"  Detalle: {st['detalles']}")
+            return 0
+    elif args.cmd == "webhook":
+        from . import webhook
+        from .common import save_user_config
+        url = getattr(args, "url", None)
+        if url:
+            save_user_config({"webhook_url": url, "webhook_activo": True})
+            print(f"Webhook configurado y activado: {url}")
+        if getattr(args, "probar", False) or not url:
+            ok, msg = webhook.test_webhook(url or "")
+            tag = "OK" if ok else "FALLO"
+            print(f"[{tag}] {msg}")
+            return 0 if ok else 1
+        return 0
     return 0
 
 

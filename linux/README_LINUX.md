@@ -1,71 +1,39 @@
-# 🐧 CookieGuard — Guía de Uso para Linux
+# 🐧 Guía de CookieGuard para Linux
 
-Esta carpeta contiene los scripts y unidades de servicio específicos para ejecutar **CookieGuard** en distribuciones **Linux** (Ubuntu, Debian, Fedora, Arch, Pop!_OS, etc.).
-
----
-
-## ⚡ Inicio Rápido
-
-CookieGuard funciona con la biblioteca estándar de Python sin requerir ningún módulo externo ni permisos de `root`.
-
-1. **Dar permisos de ejecución a los scripts:**
-   ```bash
-   chmod +x linux/*.sh
-   ```
-
-2. **Abrir CookieGuard (GUI o Dashboard en Navegador):**
-   ```bash
-   ./linux/cookieguard.sh
-   # o directamente desde la raíz:
-   ./cookieguard.sh
-   ```
-   Si el entorno de escritorio no tiene `python3-tk` instalado, CookieGuard levantará automáticamente el **Dashboard HTML local** en tu navegador predeterminado vía `xdg-open`.
-
-3. **Ejecutar un análisis puntual:**
-   ```bash
-   ./linux/analizar_ahora.sh
-   # o: python3 -m cookieguard --analizar-ahora
-   ```
+> **Instrucciones completas para despliegue, auditoría, vigilancia y respuesta a incidentes en distribuciones Linux (Ubuntu, Debian, Fedora, Arch).**
 
 ---
 
-## 👁️ Vigilante en Tiempo Real en Linux
+## 🎮 Simulación Interactiva
 
-El vigilante en tiempo real supervisa en segundo plano el acceso a las bases de datos de cookies de tus navegadores instalados (`~/.config/google-chrome`, `~/.config/chromium`, `~/.mozilla/firefox`, etc.).
-
-### Instalación como servicio persistente (sin root):
-Hemos preparado una unidad de **systemd de usuario** para que el vigilante arranque automáticamente con tu sesión:
-
-```bash
-# Instalar e iniciar el servicio en segundo plano:
-./linux/instalar_servicio.sh
-
-# Comprobar el estado del vigilante:
-systemctl --user status cookieguard-watcher.service
-
-# Ver logs en vivo:
-journalctl --user -u cookieguard-watcher.service -f
-
-# Desinstalar el servicio:
-./linux/desinstalar_servicio.sh
-```
+Puedes probar la experiencia de respuesta a incidentes en Linux abriendo en tu navegador:
+👉 **[`docs/simulaciones/simulacion_incidente_linux.html`](../docs/simulaciones/simulacion_incidente_linux.html)**
+*(Simulación interactiva autónoma en HTML para visualizar la alerta `notify-send`, inspección de `/proc/[pid]/fd` y triaje).*
 
 ---
 
-## 🔍 ¿Cómo detecta infostealers en Linux sin dependencias?
+## 🚀 Scripts Rápidos Disponibles
 
-1. **Inspección de `/proc/[pid]/fd` (Zero-root):**
-   - El vigilante inspecciona periódicamente los descriptores de archivo abiertos en el sistema de archivos virtual `/proc`.
-   - Si un binario ajeno (que no pertenezca a la lista de navegadores legítimos) abre los archivos `Cookies` de Chromium o `cookies.sqlite` de Firefox, se dispara la alerta inmediata.
-2. **Detección de argumentos de evasión en `/proc/[pid]/cmdline`:**
-   - Detecta navegadores clonados o ejecutados con flags de depuración remota (`--remote-debugging-port`), `--headless` o con extensiones forzadas desde rutas temporales (`/tmp`, `/dev/shm`).
-3. **Notificación interactiva de escritorio:**
-   - Utiliza la especificación estándar de notificaciones FreeDesktop (`notify-send` con `--action`).
-   - Muestra una tarjeta en tu entorno gráfico (GNOME, KDE, XFCE) con el botón:
-     `[ 🌐 Abrir análisis en navegador ]`
-   - Al pulsar el botón, lanza automáticamente la pestaña de triaje de emergencia.
+| Script | Propósito |
+| :--- | :--- |
+| `abrir_cookieguard.sh` | Lanza la interfaz gráfica de triaje o el dashboard interactivo. |
+| `analizar_ahora.sh` | Ejecuta un escaneo forense completo y muestra el resumen por terminal. |
+| `aislar_red.sh` | **Emergencia:** Corta la conectividad mediante `nmcli` o reglas `iptables`. |
+| `restaurar_red.sh` | Reactiva las interfaces de red y restablece el tráfico. |
+| `sembrar_canaries.sh` | Siembra cookies cebo en los perfiles de navegador locales. |
+| `instalar_vigilante.sh` | Configura e inicia el servicio en segundo plano mediante `systemd --user`. |
+| `desinstalar_vigilante.sh` | Detiene y elimina el servicio de `systemd`. |
 
-### Acciones de Mitigación Disponibles:
-- **Terminar proceso:** Envía una señal `SIGKILL` (`kill -9 PID`) para congelar la exfiltración.
-- **Revocar permisos de ejecución:** Aplica `chmod -x /ruta/al/malware` para evitar que vuelva a ser lanzado por un script padre.
-- **Triaje en navegador:** Acceso inmediato a los enlaces de revocación de sesiones remotas (Google Workspace, GitHub, Microsoft 365, AWS).
+---
+
+## ⚙️ Características Específicas de Linux
+
+1. **Inspección de Descriptores de Ficheros (`/proc/[pid]/fd`):**
+   - El vigilante detecta inmediatamente qué proceso tiene abiertos los ficheros SQLite de cookies (`Cookies`, `cookies.sqlite`).
+   - Sin necesidad de privilegios `root` para procesos pertenecientes al mismo usuario.
+
+2. **Notificaciones de Escritorio con `notify-send`:**
+   - Envío de alertas con urgencia crítica (`-u critical`) y botón interactivo para abrir el navegador con `xdg-open`.
+
+3. **Killswitch Flexible:**
+   - Soporte nativo para `nmcli networking off` (entornos de escritorio NetworkManager) o reglas `iptables` de contingencia.

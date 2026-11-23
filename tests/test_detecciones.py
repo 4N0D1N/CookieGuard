@@ -122,13 +122,18 @@ class TestIndicadores(TmpHome):
         empty.mkdir()
         c = ctx(procs=[], scan_dirs=[empty])
         res = D.run_all(c)
-        self.assertEqual(len(res), 12)
+        self.assertEqual(len(res), 13)
         for r in res:
             self.assertIn(r["estado"], VALID_STATES, r["id"])
             for k in ("nombre", "mitre", "explicacion", "resumen", "hallazgos", "puntos"):
                 self.assertIn(k, r)
-        self.assertEqual(len({r["id"] for r in res}), 12)
+        self.assertEqual(len({r["id"] for r in res}), 13)
 
+
+
+    def test_i13_canary_cookie(self):
+        r = D.i13(ctx())
+        self.assertIn(r["estado"], {"ok", "sin_datos", "alerta"})
 
 if __name__ == "__main__":
     unittest.main()
