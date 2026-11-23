@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = ROOT.parent / "CookieGuard.zip"
 SKIP_DIRS = {"__pycache__", ".git", "tmp", ".pytest_cache"}
-EXEC = {"cookieguard.sh"}
+EXEC = {"cookieguard.sh", "rescate-usb.sh"}
 
 
 def main():

@@ -2,7 +2,7 @@
 
 > **Monitor local de integridad para cookies de sesión de navegadores (Chrome, Firefox, Edge, Brave). Detección de accesos no autorizados, Killswitch de red y respuesta rápida ante exfiltración de infostealers.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.2.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.3.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
@@ -65,6 +65,21 @@ Con estas cookies, un ciberdelincuente puede:
   - Demos interactivas en `docs/simulaciones/` listas para abrir en cualquier navegador moderno.
 
 ---
+
+
+## 🚀 Novedades de la Versión 1.3.0
+
+- **📦 Ejecutable Standalone "Doble Clic" (.exe Windows y binario Linux):**
+  - Ya no es necesario tener Python instalado. Se compila automáticamente mediante GitHub Actions y se distribuye como `CookieGuard.exe` listo para usar.
+- **🚨 Modo Rescate y Triaje Forense USB:**
+  - Nuevos scripts `Rescate-USB.cmd` (Windows) y `rescate-usb.sh` (Linux) para ejecutar CookieGuard desde un pendrive en equipos sospechosos de infección.
+  - **Cero huella en disco:** Todos los informes y evidencias se escriben en el propio pendrive sin tocar el disco del sistema víctima.
+  - Genera automáticamente `URGENTE_ROTAR_CLAVES.txt` con un checklist claro y enlaces directos de revocación de sesiones para usar desde un móvil seguro.
+- **🕵️ Process Hunter (Indicador I15 - Infostealer Hunter):**
+  - Escaneo de memoria activa en tiempo real: identifica troyanos en ejecución con nombre y PID.
+  - Detección de familias de malware comunes (**LummaC2, Stealc, RedLine, Vidar, Meduza**).
+  - Alerta de suplantación de procesos del sistema (**Masquerading T1036** como `svchost.exe` fuera de System32).
+  - Sugerencia de comando inmediato para detener el proceso malicioso (`taskkill /F /PID ...` / `kill -9 ...`).
 
 ## 📂 Estructura del Repositorio
 
@@ -135,7 +150,7 @@ bash linux/instalar_vigilante.sh
 
 ## 🧪 Pruebas y Validación de Seguridad
 
-El proyecto incluye 39 pruebas unitarias automatizadas que garantizan el correcto funcionamiento y el cumplimiento estricto de los requisitos de privacidad:
+El proyecto incluye 52 pruebas unitarias automatizadas que garantizan el correcto funcionamiento y el cumplimiento estricto de los requisitos de privacidad:
 
 ```bash
 python3 -m unittest discover -s tests -v

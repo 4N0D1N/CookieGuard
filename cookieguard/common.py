@@ -12,8 +12,11 @@ from pathlib import Path
 
 IS_WIN = os.name == "nt"
 IS_LINUX = sys.platform.startswith("linux")
-APP_ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.2.0"
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    APP_ROOT = Path(sys._MEIPASS)
+else:
+    APP_ROOT = Path(__file__).resolve().parent.parent
+VERSION = "1.3.0"
 
 _perm_done: set = set()
 

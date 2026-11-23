@@ -1049,7 +1049,7 @@ def build_html(res: dict) -> str:
     <div class="tabs-nav">
         <button class="tab-btn active" onclick="showTab('rotacion')">Asistente de Rotacion ({total_servicios})</button>
         <button class="tab-btn" onclick="showTab('sesiones')">Sesiones Activas ({total_servicios})</button>
-        <button class="tab-btn" onclick="showTab('indicadores')">Indicadores MITRE (12)</button>
+        <button class="tab-btn" onclick="showTab('indicadores')">Indicadores MITRE ({len(indicadores)})</button>
         <button class="tab-btn" onclick="showTab('extensiones')">Extensiones ({len(extensiones)})</button>
         <button class="tab-btn" onclick="showTab('playbook')">Playbook de Respuesta</button>
     </div>

@@ -18,7 +18,8 @@
     "I11_manipulacion_red": 20,
     "I12_anomalias_cookies": 10,
     "I13_canary_cookie": 45,
-    "I14_dpapi_masterkey": 40
+    "I14_dpapi_masterkey": 40,
+    "I15_procesos_infostealer": 45
   },
   "dias": {
     "zombie_sin_uso": 90,

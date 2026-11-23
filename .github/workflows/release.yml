@@ -6,12 +6,9 @@ on:
       - 'v*'
 
 jobs:
-  build-release:
-    name: Package and Publish Release
+  build-source-zip:
+    name: Package Source ZIP
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,14 +26,112 @@ jobs:
           echo "Empaquetando $ZIP_NAME..."
           python tools/empaquetar.py --output "$ZIP_NAME"
           sha256sum "$ZIP_NAME" > "${ZIP_NAME}.sha256"
-          cat "${ZIP_NAME}.sha256"
+          mkdir -p artifacts
+          mv "$ZIP_NAME"* artifacts/
+
+      - name: Upload Source Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-zip
+          path: artifacts/*
+
+  build-standalone-binaries:
+    name: Build Standalone Binary on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: windows-binary
+            pkg_name: CookieGuard-Windows-x64.zip
+          - os: ubuntu-latest
+            artifact_name: linux-binary
+            pkg_name: CookieGuard-Linux-x64.tar.gz
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Compile Standalone Binary
+        shell: bash
+        run: |
+          python tools/compilar.py
+
+      - name: Package Binary Artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p package_win
+          cp dist/CookieGuard.exe package_win/
+          cp README.md package_win/ 2>/dev/null || true
+          cp "Rescate-USB.cmd" package_win/ 2>/dev/null || true
+          cp "Analizar ahora.cmd" package_win/ 2>/dev/null || true
+          cd package_win
+          7z a -tzip "../${{ matrix.pkg_name }}" *
+          cd ..
+          sha256sum "${{ matrix.pkg_name }}" > "${{ matrix.pkg_name }}.sha256"
+          mkdir -p release_bin
+          mv "${{ matrix.pkg_name }}"* release_bin/
+
+      - name: Package Binary Artifact (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p package_linux
+          cp dist/CookieGuard package_linux/
+          chmod +x package_linux/CookieGuard
+          cp README.md package_linux/ 2>/dev/null || true
+          cp rescate-usb.sh package_linux/ 2>/dev/null || true
+          cp cookieguard.sh package_linux/ 2>/dev/null || true
+          tar -czvf "${{ matrix.pkg_name }}" -C package_linux .
+          sha256sum "${{ matrix.pkg_name }}" > "${{ matrix.pkg_name }}.sha256"
+          mkdir -p release_bin
+          mv "${{ matrix.pkg_name }}"* release_bin/
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: release_bin/*
+
+  publish-release:
+    name: Publish Official GitHub Release
+    needs: [build-source-zip, build-standalone-binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all_release_files
+          merge-multiple: true
+
+      - name: List Release Files
+        shell: bash
+        run: |
+          ls -la all_release_files/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            CookieGuard-*.zip
-            CookieGuard-*.zip.sha256
+          files: all_release_files/*
           draft: false
           prerelease: false
           generate_release_notes: true

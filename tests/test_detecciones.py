@@ -122,14 +122,20 @@ class TestIndicadores(TmpHome):
         empty.mkdir()
         c = ctx(procs=[], scan_dirs=[empty])
         res = D.run_all(c)
-        self.assertEqual(len(res), 14)
+        self.assertEqual(len(res), 15)
         for r in res:
             self.assertIn(r["estado"], VALID_STATES, r["id"])
             for k in ("nombre", "mitre", "explicacion", "resumen", "hallazgos", "puntos"):
                 self.assertIn(k, r)
-        self.assertEqual(len({r["id"] for r in res}), 14)
+        self.assertEqual(len({r["id"] for r in res}), 15)
 
 
+
+
+    def test_i15_procesos_infostealer(self):
+        c = ctx(procs=[])
+        r = D.i15(c)
+        self.assertIn(r["estado"], ("ok", "sin_datos", "alerta"))
 
     def test_i13_canary_cookie(self):
         r = D.i13(ctx())

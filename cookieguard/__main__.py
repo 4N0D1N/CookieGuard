@@ -70,6 +70,13 @@ def main(argv=None):
     sub.add_parser("hardening", help="Auditoría y endurecimiento de Preferences")
     sub.add_parser("tray", help="Inicia el vigilante con icono en bandeja de sistema")
     sub.add_parser("dbsc", help="Comprueba compatibilidad y sesiones DBSC")
+
+    tr = sub.add_parser("triage", help="Modo rescate USB: genera informe y checklist en memoria/USB sin tocar disco")
+    tr.add_argument("--salida", "-o", type=str, default=None, help="Carpeta de destino del informe de rescate")
+    tr.add_argument("--no-abrir", action="store_true", help="No abre el navegador automáticamente")
+
+    pr = sub.add_parser("procesos", help="Process Hunter: escanea procesos en memoria buscando infostealers activos")
+    pr.add_argument("--json", action="store_true", help="Salida en formato JSON")
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
@@ -204,8 +211,42 @@ def main(argv=None):
         from . import tray
         tray.start_tray()
         return 0
-    return 0    return 0
+    elif args.cmd == "triage":
+        from . import triage
+        res = triage.run_triage(salida_dir=getattr(args, "salida", None), open_report=not getattr(args, "no_abrir", False))
+        print("\n=== MODO RESCATE USB COMPLETADO ===")
+        print(f"Directorio de salida: {res['salida']}")
+        print(f"Informe interactivo:  {res['html']}")
+        print(f"Checklist urgente:    {res['txt']}")
+        print(f"Metadatos JSON:       {res['json']}")
+        if res.get("malware_encontrado"):
+            print(f"\n🚨 ¡PELIGRO! Se detectaron {len(res['sospechosos'])} procesos sospechosos en ejecución.")
+            for s in res['sospechosos']:
+                print(f"   * {s['name']} (PID {s['pid']}): {s['motivo']}")
+                print(f"     Comando para detener: {s['comando']}")
+        else:
+            print("\n[OK] Memoria limpia: no se encontraron infostealers evidentes en ejecución.")
+        return 0
+    elif args.cmd == "procesos":
+        from . import process_hunter
+        res = process_hunter.scan_processes()
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"\n=== PROCESS HUNTER: {res['total_procesos']} procesos analizados ===")
+            if res.get("limpio"):
+                print("[OK] No se detectaron infostealers ni procesos maliciosos en memoria.")
+            else:
+                print(f"🚨 ¡ALERTA! Se han detectado {res['sospechosos_count']} proceso(s) sospechoso(s):")
+                for s in res["sospechosos"]:
+                    print(f"\n  [!] {s['name']} (PID {s['pid']}) - {s['familia']} [{s['severidad']}]")
+                    print(f"      Ruta: {s['exe']}")
+                    print(f"      Motivo: {s['motivo']}")
+                    print(f"      Acción: {s['comando']}")
+        return 0
     return 0
+
 
 
 if __name__ == "__main__":

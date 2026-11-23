@@ -1097,12 +1097,41 @@ def i14(ctx: Ctx):
 
     return r
 
-INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13, i14]
+
+
+def i15(ctx: Ctx):
+    r = mk("I15_procesos_infostealer", "Procesos maliciosos activos (Infostealer Hunter)", "T1059 / T1036 / T1555",
+           "Escanea la memoria y procesos en ejecución en busca de troyanos infostealer conocidos "
+           "(Lumma, Stealc, RedLine), suplantación de nombres de sistema (masquerading) y ejecutables sospechosos.")
+    try:
+        from .process_hunter import scan_processes
+        res = scan_processes(ctx.procs)
+        if not res.get("limpio", True):
+            r["estado"] = "alerta"
+            r["puntos"] = ctx.pts(r["id"], 1.0)
+            hallazgos = []
+            for s in res.get("sospechosos", []):
+                hallazgos.append(
+                    f"[{s.get('severidad', 'ALTA')}] Proceso '{s.get('name')}' (PID {s.get('pid')}): "
+                    f"{s.get('motivo')} - Familia: {s.get('familia')} - Acción: {s.get('comando')}"
+                )
+            r["hallazgos"] = hallazgos
+            r["resumen"] = f"¡Alerta! {len(hallazgos)} proceso(s) malicioso(s) o sospechoso(s) detectados en memoria"
+        else:
+            r["estado"] = "ok"
+            r["resumen"] = f"{res.get('total_procesos', 0)} procesos analizados en memoria sin indicios de infostealers"
+    except Exception as e:
+        log(f"i15 fallo: {e}")
+        r["estado"] = "error"
+        r["resumen"] = f"Error al escanear procesos: {e}"
+    return r
+
+INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13, i14, i15]
 
 
 
 def run_all(ctx: Ctx, progress=None) -> list[dict]:
-    """Ejecuta los 14 indicadores en paralelo. Un fallo en uno no detiene a los demas."""
+    """Ejecuta los 15 indicadores en paralelo. Un fallo en uno no detiene a los demas."""
     results: dict = {}
 
     def _one(fn):
@@ -1116,7 +1145,7 @@ def run_all(ctx: Ctx, progress=None) -> list[dict]:
                          "i04": "I04_abe_elevation", "i05": "I05_extensiones", "i06": "I06_copias_bd",
                          "i07": "I07_red_exfil", "i08": "I08_defender", "i09": "I09_persistencia",
                          "i10": "I10_ejecutables", "i11": "I11_manipulacion_red",
-                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie", "i14": "I14_dpapi_masterkey"}[fn.__name__]
+                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie", "i14": "I14_dpapi_masterkey", "i15": "I15_procesos_infostealer"}[fn.__name__]
             res["estado"], res["resumen"] = "error", f"El indicador fallo ({type(e).__name__}); ver el log"
         res["segundos"] = round(time.time() - t0, 1)
         if progress:
