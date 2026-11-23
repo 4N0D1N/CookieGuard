@@ -67,6 +67,9 @@ def main(argv=None):
     wh = sub.add_parser("webhook", help="Notificaciones remotas por webhook (ntfy/Discord/Telegram)")
     wh.add_argument("--probar", action="store_true", help="Envia alerta de prueba")
     wh.add_argument("--url", type=str, help="Configura la URL del webhook")
+    sub.add_parser("hardening", help="Auditoría y endurecimiento de Preferences")
+    sub.add_parser("tray", help="Inicia el vigilante con icono en bandeja de sistema")
+    sub.add_parser("dbsc", help="Comprueba compatibilidad y sesiones DBSC")
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
@@ -167,6 +170,39 @@ def main(argv=None):
             tag = "OK" if ok else "FALLO"
             print(f"[{tag}] {msg}")
             return 0 if ok else 1
+        return 0
+    elif args.cmd == "hardening":
+        from . import browsers, hardening
+        profiles = browsers.discover()
+        res = hardening.audit_all_profiles(profiles)
+        print(f"=== Auditoria de Endurecimiento de Navegadores (Puntuacion media: {res['puntuacion_media']}/100) ===")
+        for p in res["perfiles"]:
+            mark = "OK " if p["estado"] == "ok" else "!! "
+            print(f"  [{mark}] {p['navegador']} ({p['perfil']}): {p['puntuacion']}/100")
+            for h in p["hallazgos"]:
+                print(f"         - Alerta: {h}")
+            for r in p["recomendaciones"]:
+                print(f"         * Recomendacion: {r}")
+        return 0
+    elif args.cmd == "dbsc":
+        from . import browsers, dbsc, inventory
+        profiles = browsers.discover()
+        cookies, _ = inventory.collect_all(profiles)
+        from .classifier import classify_all
+        sessions = classify_all(cookies)
+        res = dbsc.evaluate_dbsc_readiness(profiles, sessions)
+        comp = "SI" if res["compatible"] else "NO"
+        print(f"=== Evaluacion de DBSC (Device Bound Session Credentials) ===")
+        print(f"Navegadores compatibles: {comp} ({len(res['navegadores_compatibles'])} detectados)")
+        print(f"Sesiones protegibles por hardware: {res['total_sesiones_protegibles']}")
+        for s in res["sesiones_protegibles"]:
+            print(f"  [DBSC] {s['servicio']} ({s['dominio']}): {s['estado_dbsc']} vía {s['soporte_hardware']}")
+        for r in res["recomendaciones"]:
+            print(f"  * {r}")
+        return 0
+    elif args.cmd == "tray":
+        from . import tray
+        tray.start_tray()
         return 0
     return 0
 

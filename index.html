@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CookieGuard - Demos Interactivas y Centro de Auditoría de Sesiones</title>
+  <meta name="description" content="Simulaciones interactivas de respuesta a incidentes de CookieGuard para Windows 11 y Linux Desktop. Auditoría forense y mitigación contra infostealers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    code, pre, .font-mono { font-family: 'JetBrains Mono', Consolas, monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-cyan-500/30 flex flex-col justify-between">
+
+  <!-- Barra Superior -->
+  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-cyan-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="font-extrabold tracking-tight text-white text-lg">CookieGuard</span>
+          <span class="ml-2 text-xs font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60">v1.2.0</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="https://github.com/4N0D1N/CookieGuard" target="_blank" class="flex items-center gap-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 px-3.5 py-1.5 rounded-lg border border-slate-700 transition">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          <span>Ver Repositorio</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Principal -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1">
+    <div class="text-center max-w-3xl mx-auto mb-14">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-800/60 text-cyan-400 text-xs font-semibold mb-4">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        Centro de Demostraciones en Vivo
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-5">
+        Simulaciones Interactivas de <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500">Respuesta a Incidentes</span>
+      </h1>
+      <p class="text-slate-400 text-base sm:text-lg leading-relaxed">
+        Experimenta cómo reacciona CookieGuard ante el robo de cookies de sesión por infostealers (Lumma, RedLine, Vidar, Stealc). Elige tu sistema operativo y prueba el flujo completo de detección, notificación, triaje forense y aislamiento de red.
+      </p>
+    </div>
+
+    <!-- Grid de Demos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+      
+      <!-- Card Windows 11 -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 sm:p-8 hover:border-cyan-500/50 transition-all duration-300 shadow-xl shadow-black/40 flex flex-col justify-between relative group overflow-hidden">
+        <div class="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl group-hover:bg-blue-600/20 transition-all"></div>
+        <div>
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <!-- Logo Windows -->
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.8"/>
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold text-white">Windows 11 Incident Demo</h2>
+                <p class="text-xs text-slate-400 font-mono">Toast Nativo + PowerShell + DPAPI</p>
+              </div>
+            </div>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/30">Interactiva</span>
+          </div>
+
+          <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+            Simula un intento de volcado por <span class="text-red-400 font-mono font-semibold">Lumma Stealer</span> en Chrome y Edge. Muestra la notificación nativa de Windows 11 en esquina inferior derecha, desglose de sesiones críticas en riesgo, telemetría DPAPI y botón de aislamiento de red (Killswitch de firewall).
+          </p>
+
+          <div class="space-y-2 mb-8 text-xs font-mono text-slate-400">
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span>Toast nativo flotante con botón interactivo</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span>Panel de triaje forense con enlaces directos de revocación</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span>Simulación de Killswitch (Netsh AdvFirewall)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-800/80">
+          <a href="docs/simulaciones/simulacion_incidente_windows.html" class="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-sm py-3 px-4 rounded-xl text-center shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
+            <span>Lanzar Demo Windows</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </a>
+          <a href="demo-windows.html" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-3 px-3 rounded-xl text-center transition flex items-center justify-center">
+            Enlace Directo
+          </a>
+        </div>
+      </div>
+
+      <!-- Card Linux Desktop -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 sm:p-8 hover:border-emerald-500/50 transition-all duration-300 shadow-xl shadow-black/40 flex flex-col justify-between relative group overflow-hidden">
+        <div class="absolute -top-24 -right-24 w-48 h-48 bg-emerald-600/10 rounded-full blur-3xl group-hover:bg-emerald-600/20 transition-all"></div>
+        <div>
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <!-- Logo Linux Tux -->
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.001 2c-2.316 0-4.195 1.88-4.195 4.197 0 .543.105 1.061.296 1.536C6.883 8.358 6 9.773 6 11.397c0 2.213 1.545 4.067 3.633 4.542-.036.216-.056.438-.056.664 0 1.988 1.432 3.642 3.332 3.971L12.001 22l-.908-1.426c1.9-.329 3.332-1.983 3.332-3.971 0-.226-.02-.448-.056-.664C16.457 15.464 18 13.61 18 11.397c0-1.624-.883-3.039-2.102-3.664.191-.475.296-.993.296-1.536 0-2.317-1.879-4.197-4.193-4.197z"/>
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold text-white">Linux Desktop Incident Demo</h2>
+                <p class="text-xs text-slate-400 font-mono">D-Bus notify-send + /proc + iptables</p>
+              </div>
+            </div>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Interactiva</span>
+          </div>
+
+          <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+            Simula un intento de exfiltración por <span class="text-red-400 font-mono font-semibold">Stealc / Python Stealer</span> en Chromium y Firefox. Muestra la notificación nativa de escritorio GNOME/KDE (<span class="font-mono text-emerald-400">notify-send</span>), inspección de descriptores de fichero en <span class="font-mono text-slate-300">/proc/[pid]/fd</span> y aislamiento inmediato con <span class="font-mono text-slate-300">iptables/nftables</span>.
+          </p>
+
+          <div class="space-y-2 mb-8 text-xs font-mono text-slate-400">
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span>Notificación nativa de escritorio con acción de triaje</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span>Rastreo forense de descriptores abiertos en tiempo real</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">✓</span>
+              <span>Simulación de Killswitch de red (iptables DROP con whitelist DNS/LAN)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-800/80">
+          <a href="docs/simulaciones/simulacion_incidente_linux.html" class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-sm py-3 px-4 rounded-xl text-center shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
+            <span>Lanzar Demo Linux</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </a>
+          <a href="demo-linux.html" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-3 px-3 rounded-xl text-center transition flex items-center justify-center">
+            Enlace Directo
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sección de Capacidades de CookieGuard v1.2.0 -->
+    <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 mb-12">
+      <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2.5">
+        <span class="w-3 h-3 rounded-sm bg-cyan-400"></span>
+        Capacidades de Detección y Defensa en Profundidad (v1.2.0)
+      </h3>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+          <div class="text-cyan-400 font-mono font-bold text-xs mb-1.5">I01 - I14 MITRE ATT&CK</div>
+          <div class="text-sm font-semibold text-white mb-1">14 Indicadores Locales</div>
+          <p class="text-xs text-slate-400">Auditoría sin descifrar ni exponer valores de cookies o contraseñas. Detección de procesos ajenos, dumps y volcados.</p>
+        </div>
+
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+          <div class="text-emerald-400 font-mono font-bold text-xs mb-1.5">0% FALSOS POSITIVOS</div>
+          <div class="text-sm font-semibold text-white mb-1">Canary Cookies (Cebos)</div>
+          <p class="text-xs text-slate-400">Inyección y vigilancia de cookies trampa en dominios señuelo. Si un stealer las extrae o consulta, se dispara la alarma inmediata.</p>
+        </div>
+
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+          <div class="text-red-400 font-mono font-bold text-xs mb-1.5">CONTENCIÓN INMEDIATA</div>
+          <div class="text-sm font-semibold text-white mb-1">Killswitch de Red</div>
+          <p class="text-xs text-slate-400">Aislamiento del equipo en milisegundos cortando la exfiltración a servidores C2, con restauración segura mediante 1 clic.</p>
+        </div>
+
+        <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+          <div class="text-purple-400 font-mono font-bold text-xs mb-1.5">AUDITORÍA DPAPI / SIGMA</div>
+          <div class="text-sm font-semibold text-white mb-1">Reglas SIEM & Hardening</div>
+          <p class="text-xs text-slate-400">Monitoreo de acceso a Local State (clave maestra), reglas Sigma listas para SIEM y endurecimiento de preferencias.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cómo ejecutar en tu equipo -->
+    <div class="bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div>
+        <h4 class="text-lg font-bold text-white mb-2">¿Quieres ejecutar CookieGuard en tu propia máquina?</h4>
+        <p class="text-slate-400 text-sm max-w-2xl">
+          Es 100% offline, escrito en Python puro sin dependencias externas obligatorias. Funciona en Windows 10/11 y cualquier distribución Linux moderna.
+        </p>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <a href="https://github.com/4N0D1N/CookieGuard#c%C3%B3mo-usar-cookieguard" target="_blank" class="bg-white hover:bg-slate-200 text-slate-950 font-bold text-xs py-3 px-5 rounded-xl transition flex items-center gap-2">
+          <span>Guía de Instalación</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-8 mt-12 text-center text-xs text-slate-600">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="mb-2">CookieGuard es un proyecto de auditoría defensiva y concienciación en ciberseguridad. Licencia MIT.</p>
+      <p class="font-mono text-slate-500">Desarrollado con rigor técnico: 0 telemetría externa, 0 exposición de secretos, privacidad por diseño.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

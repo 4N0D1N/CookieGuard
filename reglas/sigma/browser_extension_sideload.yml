@@ -1,0 +1,23 @@
+title: Carga No Autorizada de Extensión de Navegador desde Disco (Sideloading)
+id: f1829e3a-592b-4cd3-8910-182938a19283
+status: experimental
+description: Detecta la invocación de navegadores Chromium con parámetros de carga forzada de extensiones desde directorios locales (--load-extension o --disable-extensions-except). Utilizado por malware para inyectar extensiones espía capaces de interceptar tráfico web y cookies de sesión.
+references:
+    - https://attack.mitre.org/techniques/T1176/
+author: CookieGuard Research
+date: 2026-11-23
+tags:
+    - attack.persistence
+    - attack.t1176
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine|contains:
+            - '--load-extension='
+            - '--disable-extensions-except='
+    condition: selection
+falsepositives:
+    - Desarrolladores probando extensiones locales
+level: high

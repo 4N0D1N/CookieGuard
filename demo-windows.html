@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CookieGuard - Simulación de Incidente Windows 11</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    code, pre, .font-mono { font-family: 'JetBrains Mono', Consolas, monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-red-500/30">
+
+  <!-- Banner de aviso: SIMULACIÓN -->
+  <div class="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-800/40 px-4 py-2 text-center text-xs text-red-200 flex items-center justify-center gap-2 sticky top-0 z-40 backdrop-blur-md">
+    <span class="inline-flex items-center justify-center w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+    <span class="font-bold text-red-400">MODO SIMULACIÓN:</span> Este entorno interactivo recrea la alerta nativa Toast de Windows 11 y el panel de triaje en el navegador ante un ataque de infostealer.
+  </div>
+
+  <!-- Windows 11 Native Toast Simulation (Popup flotante abajo a la derecha) -->
+  <div id="win-toast" class="fixed bottom-6 right-6 z-50 max-w-md w-full bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/80 p-4 transition-all duration-500 transform translate-y-0 opacity-100 ring-1 ring-red-500/40">
+    <div class="flex items-start gap-3.5">
+      <!-- Icono Windows Security Shield -->
+      <div class="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0 text-red-400">
+        <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+            <span class="w-2.5 h-2.5 bg-blue-500 rounded-sm inline-block"></span>
+            <span>CookieGuard • Windows 11</span>
+          </div>
+          <span class="text-[11px] text-slate-500">Ahora</span>
+        </div>
+        <p class="text-sm font-bold text-red-400 mt-1">¡Alerta Crítica: Exfiltración de Cookies!</p>
+        <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">
+          Proceso sospechoso <code class="text-amber-300 bg-slate-800 px-1 py-0.5 rounded text-[11px]">svchost_update.exe</code> (PID <span class="font-bold text-white">4892</span>) en <code class="text-slate-400 text-[10px]">AppData\Local\Temp</code> abrió <code class="text-red-300 text-[10px]">Chrome\User Data\Default\Network\Cookies</code>.
+        </p>
+        <div class="mt-3 flex items-center gap-2">
+          <button onclick="scrollToTriage()" class="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 px-3 rounded-xl transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            🌐 Abrir análisis en navegador
+          </button>
+          <button onclick="dismissToast()" class="text-xs text-slate-400 hover:text-white px-2.5 py-2 rounded-xl hover:bg-slate-800 transition cursor-pointer">
+            Descartar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor Principal (Panel de Triaje de Emergencia) -->
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-6">
+
+    <!-- Encabezado de Navegación y Estado -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div>
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 flex items-center justify-center font-bold text-white shadow-lg shadow-red-950/50">
+            CG
+          </div>
+          <div>
+            <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              CookieGuard <span class="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">v1.1.0 (Windows)</span>
+            </h1>
+            <p class="text-xs text-slate-400">Respuesta a Incidentes y Rotación Asistida de Sesiones</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controles de Simulación -->
+      <div class="flex items-center gap-2">
+        <button onclick="retriggerAlert()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+          <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Re-lanzar aviso Toast
+        </button>
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/30">
+          ● Semáforo ROJO (Crítico)
+        </span>
+      </div>
+    </header>
+
+    <!-- BANNER DE CRISIS / PROCESO ATACANTE -->
+    <section id="triage-panel" class="bg-gradient-to-br from-red-950/60 via-slate-900 to-slate-900 border-2 border-red-600/60 rounded-3xl p-6 shadow-2xl shadow-red-950/40 relative overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-64 h-64 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div class="space-y-3 max-w-2xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 border border-red-500/40 text-red-300 text-xs font-bold uppercase tracking-wider">
+            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            Incidente Activo: Posible Exfiltración de Sesiones
+          </div>
+          <h2 class="text-2xl font-black text-white tracking-tight">
+            Acceso no autorizado detectado en bases de datos Chromium
+          </h2>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            El vigilante interceptó un ejecutable desconocido accediendo directamente a la base de datos SQLite de cookies sin pasar por la interfaz del navegador.
+          </p>
+
+          <!-- Tarjeta de Metadatos del Proceso Atacante -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs font-mono">
+            <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+              <span class="text-slate-500 block text-[11px] font-sans">Proceso / Binario:</span>
+              <span class="text-amber-300 font-bold break-all">svchost_update.exe (PID 4892)</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+              <span class="text-slate-500 block text-[11px] font-sans">Ruta en Disco:</span>
+              <span class="text-slate-300 break-all">C:\Users\Victima\AppData\Local\Temp\svchost_update.exe</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+              <span class="text-slate-500 block text-[11px] font-sans">Hash SHA-256 (Muestra):</span>
+              <span class="text-slate-400 break-all">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+              <span class="text-slate-500 block text-[11px] font-sans">Mecanismo de Detección:</span>
+              <span class="text-emerald-400 font-bold">Windows Event ID 4663 + Sysmon EID 10</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones de Acción de Emergencia -->
+        <div class="flex flex-col w-full lg:w-72 gap-2.5 shrink-0">
+          <button id="btn-kill" onclick="simulateKillProcess(4892)" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-2xl shadow-xl shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            <span>Terminar Proceso (PID 4892)</span>
+          </button>
+
+          <!-- Botón de Killswitch -->
+          <button id="btn-killswitch" onclick="toggleKillswitch()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-4 rounded-2xl shadow-xl shadow-amber-600/20 transition flex items-center justify-center gap-2 cursor-pointer text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"/></svg>
+            <span id="killswitch-text">🛡️ Aislar Red (Killswitch)</span>
+          </button>
+
+          <button onclick="simulateCloseBrowsers()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 px-4 rounded-2xl border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer text-xs">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Cerrar todos los navegadores
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTIFICACIONES Y MEJORAS ACTIVAS (CANARY + WEBHOOK + KILLSWITCH STATUS) -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Tarjeta Canary Cookie -->
+      <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 flex items-start gap-3">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold text-amber-300 uppercase tracking-wider">Cebo Canary Disparado (I13)</h3>
+          <p class="text-xs text-slate-300 mt-1">
+            El stealer intentó leer la cookie trampa <code class="text-amber-200">corp_vault_session</code>. Certeza: <strong class="text-white">100% sin falsos positivos</strong>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Tarjeta Killswitch Estado -->
+      <div id="card-killswitch-status" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-start gap-3">
+        <div id="icon-ks" class="w-9 h-9 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Killswitch de Red</h3>
+          <p id="desc-ks" class="text-xs text-slate-400 mt-1">
+            Red normal. Haz clic en "Aislar Red" para bloquear tráfico saliente hacia servidores C2.
+          </p>
+        </div>
+      </div>
+
+      <!-- Tarjeta Webhook Remoto -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-start gap-3">
+        <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold text-purple-300 uppercase tracking-wider">Aviso Remoto Móvil</h3>
+          <p class="text-xs text-slate-300 mt-1">
+            Notificación enviada a tu dispositivo móvil vía webhook ntfy.sh / Discord con metadatos del incidente.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SESIONES CRÍTICAS EN RIESGO -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            Sesiones Críticas en Riesgo
+            <span class="text-xs font-normal text-slate-400 font-mono">(Rotación prioritaria)</span>
+          </h3>
+          <p class="text-xs text-slate-400">Si un infostealer leyó la base de datos, debes revocar las sesiones activas inmediatamente desde estos accesos directos:</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+
+        <!-- Google -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 font-bold flex items-center justify-center text-xs">G</div>
+              <div>
+                <h4 class="text-sm font-bold text-white">Google Workspace</h4>
+                <p class="text-[11px] text-slate-400">gmail.com, google.com</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300">Crítico</span>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <a href="https://myaccount.google.com/device-activity" target="_blank" class="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-200 border border-red-500/30 text-center py-2 rounded-xl font-semibold transition">
+              Cerrar sesiones
+            </a>
+            <a href="https://myaccount.google.com/signinoptions/password" target="_blank" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center py-2 rounded-xl font-semibold transition">
+              Cambiar clave
+            </a>
+          </div>
+        </div>
+
+        <!-- GitHub -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-slate-800 text-white font-bold flex items-center justify-center text-xs">GH</div>
+              <div>
+                <h4 class="text-sm font-bold text-white">GitHub</h4>
+                <p class="text-[11px] text-slate-400">github.com (repositorios y PATs)</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300">Crítico</span>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <a href="https://github.com/settings/sessions" target="_blank" class="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-200 border border-red-500/30 text-center py-2 rounded-xl font-semibold transition">
+              Revocar sesiones
+            </a>
+            <a href="https://github.com/settings/security" target="_blank" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center py-2 rounded-xl font-semibold transition">
+              Rotar tokens
+            </a>
+          </div>
+        </div>
+
+        <!-- Microsoft 365 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 font-bold flex items-center justify-center text-xs">MS</div>
+              <div>
+                <h4 class="text-sm font-bold text-white">Microsoft 365</h4>
+                <p class="text-[11px] text-slate-400">login.microsoftonline.com</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300">Crítico</span>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <a href="https://account.activedirectory.windowsazure.com/r#/applications" target="_blank" class="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-200 border border-red-500/30 text-center py-2 rounded-xl font-semibold transition">
+              Cerrar sesiones
+            </a>
+            <a href="https://account.microsoft.com/security" target="_blank" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center py-2 rounded-xl font-semibold transition">
+              Cambiar clave
+            </a>
+          </div>
+        </div>
+
+        <!-- AWS Console -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 font-bold flex items-center justify-center text-xs">AWS</div>
+              <div>
+                <h4 class="text-sm font-bold text-white">AWS Console</h4>
+                <p class="text-[11px] text-slate-400">aws.amazon.com</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300">Crítico</span>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <a href="https://console.aws.amazon.com/iam/home#/security_credentials" target="_blank" class="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-200 border border-red-500/30 text-center py-2 rounded-xl font-semibold transition">
+              Revocar IAM
+            </a>
+            <a href="https://us-east-1.signin.aws.amazon.com/change_password" target="_blank" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center py-2 rounded-xl font-semibold transition">
+              Cambiar clave
+            </a>
+          </div>
+        </div>
+
+        <!-- Binance -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-yellow-500/10 text-yellow-400 font-bold flex items-center justify-center text-xs">BN</div>
+              <div>
+                <h4 class="text-sm font-bold text-white">Binance</h4>
+                <p class="text-[11px] text-slate-400">binance.com (Crypto/Financiero)</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300">Crítico</span>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <a href="https://www.binance.com/es/my/security/device-management" target="_blank" class="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-200 border border-red-500/30 text-center py-2 rounded-xl font-semibold transition">
+              Dispositivos
+            </a>
+            <a href="https://www.binance.com/es/my/security" target="_blank" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center py-2 rounded-xl font-semibold transition">
+              Seguridad / 2FA
+            </a>
+          </div>
+        </div>
+
+        <!-- Banco Santander / BBVA -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold flex items-center justify-center text-xs">BK</div>
+              <div>
+                <h4 class="text-sm font-bold text-white">Banca Online</h4>
+                <p class="text-[11px] text-slate-400">santander.es, bbva.es</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300">Crítico</span>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <a href="https://www.bancosantander.es" target="_blank" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center py-2 rounded-xl font-semibold transition">
+              Acceder a banca
+            </a>
+            <a href="https://www.bbva.es" target="_blank" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-center py-2 rounded-xl font-semibold transition">
+              Revisar cargos
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TIMELINE FORENSE DEL INCIDENTE -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Registro Forense del Ataque (Auditoría Sysmon / Event ID 4663)
+      </h3>
+
+      <div class="space-y-3 font-mono text-xs">
+        <div class="flex items-start gap-3 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+          <span class="text-slate-500 shrink-0">17:34:02.118</span>
+          <span class="text-amber-400 font-semibold shrink-0">[PROCESO]</span>
+          <span class="text-slate-300">Ejecución de <code>svchost_update.exe</code> en C:\Users\Victima\AppData\Local\Temp por proceso padre explorer.exe (PID 1204)</span>
+        </div>
+        <div class="flex items-start gap-3 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+          <span class="text-slate-500 shrink-0">17:34:03.042</span>
+          <span class="text-red-400 font-semibold shrink-0">[ACCESO]</span>
+          <span class="text-slate-300">Intento de lectura directa a <code>AppData\Local\Google\Chrome\User Data\Default\Network\Cookies</code></span>
+        </div>
+        <div class="flex items-start gap-3 p-2.5 rounded-xl bg-slate-950/60 border border-red-500/30 bg-red-950/20">
+          <span class="text-slate-500 shrink-0">17:34:03.119</span>
+          <span class="text-red-400 font-bold shrink-0">[CANARY]</span>
+          <span class="text-red-200">¡DISPARO! Acceso a cookie señuelo <code>corp_vault_session</code>. CookieGuard alerta al usuario y envía webhook.</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function scrollToTriage() {
+      document.getElementById('triage-panel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function dismissToast() {
+      const toast = document.getElementById('win-toast');
+      toast.classList.add('opacity-0', 'translate-y-4');
+      setTimeout(() => toast.style.display = 'none', 500);
+    }
+
+    function retriggerAlert() {
+      const toast = document.getElementById('win-toast');
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.classList.remove('opacity-0', 'translate-y-4');
+        toast.classList.add('opacity-100', 'translate-y-0');
+      }, 50);
+    }
+
+    function simulateKillProcess(pid) {
+      const btn = document.getElementById('btn-kill');
+      btn.innerHTML = '<span class="animate-spin">⏳</span> Terminando PID ' + pid + ' (taskkill /F)...';
+      btn.classList.remove('bg-red-600', 'hover:bg-red-500');
+      btn.classList.add('bg-slate-700');
+
+      setTimeout(() => {
+        btn.innerHTML = '✅ Proceso Terminado (taskkill ejecutado)';
+        btn.classList.remove('bg-slate-700');
+        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+        btn.disabled = true;
+      }, 700);
+    }
+
+    let isKillswitchActive = false;
+    function toggleKillswitch() {
+      const btn = document.getElementById('btn-killswitch');
+      const text = document.getElementById('killswitch-text');
+      const card = document.getElementById('card-killswitch-status');
+      const desc = document.getElementById('desc-ks');
+      const icon = document.getElementById('icon-ks');
+
+      isKillswitchActive = !isKillswitchActive;
+
+      if (isKillswitchActive) {
+        text.innerText = '🔴 Red Aislada (Restaurar Conexión)';
+        btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+        btn.classList.add('bg-red-700', 'hover:bg-red-600');
+
+        card.classList.add('border-red-500/60', 'bg-red-950/20');
+        icon.classList.remove('bg-slate-800', 'text-slate-400');
+        icon.classList.add('bg-red-500/20', 'text-red-400');
+        desc.innerHTML = '<strong class="text-red-400">RED AISLADA:</strong> Todo tráfico saliente hacia internet está bloqueado para impedir exfiltración al C2.';
+      } else {
+        text.innerText = '🛡️ Aislar Red (Killswitch)';
+        btn.classList.remove('bg-red-700', 'hover:bg-red-600');
+        btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+
+        card.classList.remove('border-red-500/60', 'bg-red-950/20');
+        icon.classList.add('bg-slate-800', 'text-slate-400');
+        icon.classList.remove('bg-red-500/20', 'text-red-400');
+        desc.innerText = 'Red normal. Haz clic en "Aislar Red" para bloquear tráfico saliente hacia servidores C2.';
+      }
+    }
+
+    function simulateCloseBrowsers() {
+      alert('Simulación: Cerrando procesos de Chrome, Edge y Firefox...');
+    }
+  </script>
+</body>
+</html>

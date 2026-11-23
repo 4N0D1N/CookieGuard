@@ -122,18 +122,24 @@ class TestIndicadores(TmpHome):
         empty.mkdir()
         c = ctx(procs=[], scan_dirs=[empty])
         res = D.run_all(c)
-        self.assertEqual(len(res), 13)
+        self.assertEqual(len(res), 14)
         for r in res:
             self.assertIn(r["estado"], VALID_STATES, r["id"])
             for k in ("nombre", "mitre", "explicacion", "resumen", "hallazgos", "puntos"):
                 self.assertIn(k, r)
-        self.assertEqual(len({r["id"] for r in res}), 13)
+        self.assertEqual(len({r["id"] for r in res}), 14)
 
 
 
     def test_i13_canary_cookie(self):
         r = D.i13(ctx())
         self.assertIn(r["estado"], {"ok", "sin_datos", "alerta"})
+
+
+    def test_i14_dpapi_masterkey(self):
+        r = D.i14(ctx())
+        self.assertIn(r["estado"], {"ok", "sin_datos", "alerta"})
+        self.assertEqual(r["id"], "I14_dpapi_masterkey")
 
 if __name__ == "__main__":
     unittest.main()

@@ -1019,11 +1019,88 @@ def i13(ctx: Ctx):
         r["resumen"] = f"Error comprobando canaries: {e}"
     return r
 
-INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13]
+
+# ------------------------------------------------------------------ I14 DPAPI / master key
+def i14(ctx: Ctx):
+    r = mk("I14_dpapi_masterkey", "Auditoria de acceso a clave maestra (Local State / DPAPI)", "T1555.003",
+           "Los infostealers necesitan leer el fichero Local State de Chromium para extraer la clave "
+           "cifrada y descifrarla mediante la API DPAPI de Windows o el Secret Service de Linux.")
+    hallazgos = []
+
+    # 1. Rutas de Local State y credenciales
+    ls_paths = set()
+    for p in ctx.profiles:
+        if p.family == "chromium":
+            f = p.root / "Local State"
+            if f.is_file():
+                ls_paths.add(f.resolve())
+        elif p.family == "firefox":
+            for n in ("key4.db", "logins.json"):
+                f = p.path / n
+                if f.is_file():
+                    ls_paths.add(f.resolve())
+
+    # 2. En Linux, revisar /proc/[pid]/fd en procesos ajenos a navegadores
+    if IS_LINUX:
+        for pr in ctx.procs:
+            pid = pr.get("pid")
+            name = (pr.get("name") or "").lower()
+            if not pid or norm_name(name) in ctx.whitelist:
+                continue
+            fd_dir = Path(f"/proc/{pid}/fd")
+            if not fd_dir.is_dir():
+                continue
+            try:
+                for entry in fd_dir.iterdir():
+                    try:
+                        target = os.readlink(entry)
+                        t_lower = target.lower()
+                        if any(str(lsp).lower() == t_lower or t_lower.endswith("/local state") or t_lower.endswith("/key4.db") for lsp in ls_paths):
+                            hallazgos.append(f"Proceso no autorizado '{name}' (PID {pid}) mantiene abierto descriptor hacia clave maestra: {target}")
+                    except (OSError, ValueError):
+                        continue
+            except (PermissionError, OSError):
+                continue
+
+    # 3. Deteccion de herramientas o comandos de volcado de DPAPI / Master Key
+    SUSPICIOUS_DPAPI_CMDS = re.compile(r"(sharpdpapi|hackbrowserdata|mimikatz|pypykatz|lazagne|dump-chrome-cookies|vaultcmd|decrypt_chrome)", re.I)
+    for pr in ctx.procs:
+        cmd = pr.get("cmd") or ""
+        name = pr.get("name") or ""
+        if SUSPICIOUS_DPAPI_CMDS.search(cmd) or SUSPICIOUS_DPAPI_CMDS.search(name):
+            hallazgos.append(f"Proceso sospechoso de volcado de DPAPI/credenciales detectado: '{name}' (PID {pr.get('pid')}): {cmd[:120]}")
+
+    # 4. En Windows, revisar logs de Sysmon Event ID 11 (FileCreate) o Event ID 10 para Local State
+    if IS_WIN:
+        sys11 = _sysmon([11], count=200)
+        for ev in sys11:
+            fn = (ev.get("TargetFilename") or "").lower()
+            img = (ev.get("Image") or "").lower()
+            if "local state" in fn and not any(b in img for b in ctx.whitelist):
+                hallazgos.append(f"Sysmon EID 11: Proceso '{img}' accedio a clave maestra '{fn}'")
+
+    if hallazgos:
+        r["estado"] = "alerta"
+        r["hallazgos"] = hallazgos
+        r["puntos"] = ctx.pts(r["id"], 1.0)
+        r["resumen"] = f"¡Alerta! {len(hallazgos)} acceso(s) sospechoso(s) a claves maestras de cookies"
+    else:
+        if ls_paths:
+            r["estado"] = "ok"
+            r["resumen"] = f"{len(ls_paths)} fichero(s) Local State/Master Key vigilados sin accesos anómalos"
+        else:
+            r["estado"] = "sin_datos"
+            r["resumen"] = "No se detectaron perfiles con ficheros Local State"
+            r["falta"] = "No hay perfiles de navegador Chromium/Firefox activos en este equipo"
+
+    return r
+
+INDICATORS = [i01, i02, i03, i04, i05, i06, i07, i08, i09, i10, i11, i12, i13, i14]
+
 
 
 def run_all(ctx: Ctx, progress=None) -> list[dict]:
-    """Ejecuta los 13 indicadores en paralelo. Un fallo en uno no detiene a los demas."""
+    """Ejecuta los 14 indicadores en paralelo. Un fallo en uno no detiene a los demas."""
     results: dict = {}
 
     def _one(fn):
@@ -1037,7 +1114,7 @@ def run_all(ctx: Ctx, progress=None) -> list[dict]:
                          "i04": "I04_abe_elevation", "i05": "I05_extensiones", "i06": "I06_copias_bd",
                          "i07": "I07_red_exfil", "i08": "I08_defender", "i09": "I09_persistencia",
                          "i10": "I10_ejecutables", "i11": "I11_manipulacion_red",
-                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie"}[fn.__name__]
+                         "i12": "I12_anomalias_cookies", "i13": "I13_canary_cookie", "i14": "I14_dpapi_masterkey"}[fn.__name__]
             res["estado"], res["resumen"] = "error", f"El indicador fallo ({type(e).__name__}); ver el log"
         res["segundos"] = round(time.time() - t0, 1)
         if progress:

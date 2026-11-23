@@ -1,0 +1,32 @@
+title: Acceso No Autorizado al Archivo Local State de Chromium (DPAPI Master Key)
+id: d8192a54-6e11-48cb-a892-3c82910fa3b2
+status: experimental
+description: Detecta procesos no autorizados accediendo al fichero 'Local State' de navegadores basados en Chromium. Este fichero contiene la clave maestra AES cifrada con DPAPI (CryptProtectData). Los infostealers lo leen para poder descifrar el valor 'encrypted_value' de las cookies de sesión.
+references:
+    - https://attack.mitre.org/techniques/T1555/003/
+    - https://attack.mitre.org/techniques/T1003/
+author: CookieGuard Research
+date: 2026-11-23
+tags:
+    - attack.credential_access
+    - attack.t1555.003
+    - attack.t1003
+logsource:
+    category: file_access
+    product: windows
+detection:
+    selection:
+        TargetFilename|endswith:
+            - '\User Data\Local State'
+            - '\Local State'
+    filter_browsers:
+        Image|endswith:
+            - '\chrome.exe'
+            - '\msedge.exe'
+            - '\brave.exe'
+            - '\opera.exe'
+            - '\vivaldi.exe'
+    condition: selection and not filter_browsers
+falsepositives:
+    - Software de gestión de inventario o copias de seguridad
+level: critical

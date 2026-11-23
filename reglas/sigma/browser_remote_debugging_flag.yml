@@ -1,0 +1,26 @@
+title: Navegador Web Ejecutado con Puerto de Depuración Remota
+id: a72b910e-1f83-4a11-8293-49281a0b3e51
+status: experimental
+description: Detecta la ejecución de Google Chrome, Microsoft Edge o navegadores Chromium con flags de depuración remota (--remote-debugging-port o --remote-debugging-pipe). Los atacantes usan este método para conectarse al DevTools Protocol (CDP) y extraer cookies de sesión vivas directamente de la memoria sin tocar el disco.
+references:
+    - https://attack.mitre.org/techniques/T1185/
+    - https://attack.mitre.org/techniques/T1539/
+author: CookieGuard Research
+date: 2026-11-23
+tags:
+    - attack.defense_evasion
+    - attack.t1185
+    - attack.t1539
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine|contains:
+            - '--remote-debugging-port'
+            - '--remote-debugging-pipe'
+            - '--remote-allow-origins'
+    condition: selection
+falsepositives:
+    - Entornos de desarrollo de software legítimos (ej: VS Code debugger, Selenium, Puppeteer)
+level: high

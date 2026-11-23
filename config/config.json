@@ -17,7 +17,8 @@
     "I10_ejecutables": 12,
     "I11_manipulacion_red": 20,
     "I12_anomalias_cookies": 10,
-    "I13_canary_cookie": 45
+    "I13_canary_cookie": 45,
+    "I14_dpapi_masterkey": 40
   },
   "dias": {
     "zombie_sin_uso": 90,
@@ -35,5 +36,8 @@
   "directorios_copias_sospechosas": [],
   "webhook_activo": false,
   "webhook_url": "",
-  "killswitch_activo": false
+  "killswitch_activo": false,
+  "dbsc_auditoria": true,
+  "hardening_auditoria": true,
+  "tray_habilitado": true
 }

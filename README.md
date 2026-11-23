@@ -2,7 +2,7 @@
 
 > **Monitor local de integridad para cookies de sesión de navegadores (Chrome, Firefox, Edge, Brave). Detección de accesos no autorizados, Killswitch de red y respuesta rápida ante exfiltración de infostealers.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.1.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.2.0-blue)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
 ![Privacidad](https://img.shields.io/badge/Privacidad-100%25%20Offline-red)
@@ -11,14 +11,15 @@
 
 ---
 
-## 🎮 Demos y Simulaciones Interactivas (Prueba visual en navegador)
+## 🎮 Demos y Simulaciones Interactivas en Vivo (Prueba online en tu navegador)
 
-Para experimentar cómo responde CookieGuard ante un incidente real sin necesidad de ejecutar malware:
+Puedes probar de forma interactiva e inmediata cómo responde CookieGuard ante un incidente real sin instalar nada:
 
-- **🖥️ [Simulación Windows 11](docs/simulaciones/simulacion_incidente_windows.html):** Recrea la notificación nativa Toast en la esquina inferior derecha y el panel de triaje de emergencia con aislamiento de red Killswitch.
-- **🐧 [Simulación Linux Desktop](docs/simulaciones/simulacion_incidente_linux.html):** Recrea la notificación nativa `notify-send` y el panel de triaje con inspección de descriptores en `/proc/[pid]/fd`.
+- 🌐 **[Abrir Centro de Demos en Vivo (GitHub Pages)](https://4n0d1n.github.io/CookieGuard/)**
+- 🖥️ **[Lanzar Demo Windows 11 Online](https://4n0d1n.github.io/CookieGuard/docs/simulaciones/simulacion_incidente_windows.html)** *(Recrea el Toast nativo flotante de Windows 11, telemetría DPAPI, triaje forense y Killswitch de red)*
+- 🐧 **[Lanzar Demo Linux Desktop Online](https://4n0d1n.github.io/CookieGuard/docs/simulaciones/simulacion_incidente_linux.html)** *(Recrea la alerta D-Bus notify-send, trazado de descriptores en /proc/[pid]/fd y aislamiento con iptables/nftables)*
 
-*(Ambos archivos son **simulaciones interactivas autónomas** en HTML5/Tailwind para pruebas visuales, demostraciones y entrenamiento en respuesta a incidentes).*
+*(Ambas simulaciones son interactivas en HTML5/Tailwind, ejecutables en cualquier navegador tanto online vía GitHub Pages como offline abriendo los archivos locales).*
 
 ---
 

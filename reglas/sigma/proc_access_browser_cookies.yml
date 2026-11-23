@@ -1,0 +1,35 @@
+title: Acceso Anómalo a Base de Datos de Cookies del Navegador
+id: c4f8e0a1-7b92-4d38-9e51-6f18374820a1
+status: experimental
+description: Detecta procesos que no son navegadores web legítimos accediendo o abriendo los ficheros de base de datos de Cookies (Chromium Network/Cookies o Firefox cookies.sqlite). Comportamiento característico de infostealers (Lumma, RedLine, Vidar, Stealc).
+references:
+    - https://attack.mitre.org/techniques/T1539/
+    - https://attack.mitre.org/techniques/T1555/003/
+author: CookieGuard Research
+date: 2026-11-23
+tags:
+    - attack.credential_access
+    - attack.t1539
+    - attack.t1555.003
+logsource:
+    category: file_access
+    product: windows
+detection:
+    selection:
+        TargetFilename|endswith:
+            - '\Network\Cookies'
+            - '\Cookies'
+            - '\cookies.sqlite'
+    filter_legit:
+        Image|endswith:
+            - '\chrome.exe'
+            - '\msedge.exe'
+            - '\brave.exe'
+            - '\opera.exe'
+            - '\firefox.exe'
+            - '\vivaldi.exe'
+    condition: selection and not filter_legit
+falsepositives:
+    - Herramientas de backup legítimas (ej: Veeam, OneDrive)
+    - Limpiadores de sistema autorizados (ej: CCleaner o BleachBit)
+level: high

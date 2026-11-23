@@ -13,7 +13,7 @@ from pathlib import Path
 IS_WIN = os.name == "nt"
 IS_LINUX = sys.platform.startswith("linux")
 APP_ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 _perm_done: set = set()
 
