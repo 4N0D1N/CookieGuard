@@ -1,0 +1,3 @@
+# Dependencia opcional: solo necesaria para cifrar/descifrar snapshots con AES-256-GCM.
+# El analizador principal y los snapshots sin cifrar siguen funcionando sin dependencias externas.
+cryptography>=42.0

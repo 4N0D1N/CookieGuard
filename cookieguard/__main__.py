@@ -112,6 +112,25 @@ def main(argv=None):
     rev = sub.add_parser("revocar", help="Genera script por lotes para revocacion rapida de sesiones")
     rev.add_argument("--salida", type=str, default=None, help="Carpeta de destino del script")
 
+    sc = sub.add_parser("stix", help="Exporta alertas actuales a un Bundle STIX 2.1")
+    sc.add_argument("--salida", type=str, default=None, help="Ruta destino del JSON STIX")
+
+    dc = sub.add_parser("dns-canary", help="Genera y revisa DNS canaries de detección pasiva")
+    dc_sub = dc.add_subparsers(dest="dns_cmd")
+    dc_gen = dc_sub.add_parser("generate", help="Genera un nombre canary único, no lo despliega")
+    dc_gen.add_argument("--domain", required=True, help="Dominio DNS propio/controlado para recibir consultas")
+    dc_gen.add_argument("--notes", default="", help="Nota local para identificar el token")
+    dc_sub.add_parser("list", help="Lista registros canary almacenados localmente")
+    dc_check = dc_sub.add_parser("check", help="Compara una lista DNS local con canaries almacenados")
+    dc_check.add_argument("--file", required=True, help="Archivo de texto con nombres DNS observados")
+
+    sn.add_argument("--cifrar", action="store_true", help="Cifra snapshot con contraseña solicitada de forma segura")
+    sn.add_argument("--sin-anonimizar", action="store_true", help="Desactiva la anonimización automática; úsalo solo si necesitas preservar datos para análisis local")
+
+    dec = sub.add_parser("snapshot-descifrar", help="Descifra un snapshot .cgenc con contraseña")
+    dec.add_argument("archivo", help="Ruta al archivo .cgenc")
+    dec.add_argument("--salida", type=str, default=None, help="Ruta destino del ZIP")
+
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
@@ -330,6 +349,62 @@ def main(argv=None):
                 print(f"      Ruta: {s['ruta']} ({s['num_archivos']} ficheros, ult. mod. hace {s['horas_ultima_modificacion']}h)")
                 print(f"      Consejo: {s['consejo']}")
         return 0
+    elif args.cmd == "snapshot":
+        import getpass
+        from . import forensics
+        password = getpass.getpass("Contraseña para cifrar el snapshot (déjala vacía para ZIP sin cifrar): ") if getattr(args, "cifrar", False) else None
+        if getattr(args, "cifrar", False) and not password:
+            print("FALLO: se solicitó cifrado pero no se proporcionó una contraseña.")
+            return 1
+        out_dir = getattr(args, "salida", None)
+        try:
+            path = forensics.capture_volatile_snapshot(
+                reason=getattr(args, "motivo", "manual"),
+                output_dir=out_dir,
+                sanitize=not getattr(args, "sin_anonimizar", False),
+                password=password
+            )
+        except (OSError, RuntimeError, ValueError) as e:
+            print(f"No se pudo generar el snapshot: {e}")
+            return 1
+        print(f"Snapshot generado: {path}")
+        return 0
+    elif args.cmd == "snapshot-descifrar":
+        import getpass
+        from . import forensics
+        password = getpass.getpass("Contraseña del snapshot: ")
+        try:
+            path = forensics.decrypt_snapshot(args.archivo, password, getattr(args, "salida", None))
+        except (ValueError, RuntimeError, OSError) as e:
+            print(f"No se pudo descifrar: {e}")
+            return 1
+        print(f"Snapshot descifrado: {path}")
+        return 0
+    elif args.cmd == "stix":
+        from . import stix_export, engine
+        res = engine.run_analysis(update_state=False)
+        dest = stix_export.export_stix_bundle(res, getattr(args, "salida", None))
+        print(f"Bundle STIX 2.1 generado: {dest}")
+        return 0
+    elif args.cmd == "dns-canary":
+        from . import dns_canary
+        subcmd = getattr(args, "dns_cmd", None)
+        if subcmd == "generate":
+            rec = dns_canary.generate_dns_canary_token(getattr(args, "domain"), getattr(args, "notes", ""))
+            print(json.dumps(rec, indent=2, ensure_ascii=False))
+            print("AVISO: solo se generó un FQDN. La señal externa requiere que el dominio sea tuyo y que un DNS autoritativo registre las consultas; no se despliega automáticamente en perfiles reales.")
+            return 0
+        elif subcmd == "list":
+            print(json.dumps(dns_canary.list_dns_canary_tokens(), indent=2, ensure_ascii=False))
+            return 0
+        elif subcmd == "check":
+            entries = open(args.file, encoding="utf-8").read().splitlines()
+            alerts = dns_canary.check_dns_cache_for_canaries(entries)
+            print(json.dumps(alerts, indent=2, ensure_ascii=False))
+            return 0
+        else:
+            print("Uso: cookieguard dns-canary {generate|list|check}")
+            return 2
     elif args.cmd == "extensions":
         from . import extensions
         res = extensions.audit_browser_extensions()

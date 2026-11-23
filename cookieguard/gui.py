@@ -372,11 +372,7 @@ class App(tk.Tk):
         self.lbl_nivel.config(text=f"{v['nombre']} - {v['puntos']} puntos")
         texto_resumen = v["texto"]
         if v.get("principales"):
-            texto_resumen += "
-
-⚠️ Pistas principales:
- • " + "
- • ".join(v["principales"])
+            texto_resumen += "\n\n⚠️ Pistas principales:\n • " + "\n • ".join(v["principales"])
         self.lbl_texto.config(text=texto_resumen)
         st = r["estadisticas"]
         self.lbl_stats.config(text=f"{st['cookies_sesion']} cookies de sesion  |  {len(r['grupos'])} servicios  |  "

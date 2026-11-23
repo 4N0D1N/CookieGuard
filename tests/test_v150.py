@@ -22,7 +22,7 @@ from cookieguard.detections import INDICATORS, Ctx, i18, i19
 
 class TestV150(TmpHome):
     def test_version_1_5_0(self):
-        self.assertEqual(VERSION, "1.5.0")
+        self.assertEqual(VERSION, "1.6.0")
 
     def test_indicadores_i18_e_i19_registrados(self):
         ind_names = [fn.__name__ for fn in INDICATORS]
@@ -55,10 +55,11 @@ class TestV150(TmpHome):
             self.assertTrue(chk2["disparado"])
             self.assertGreater(len(chk2["alertas"]), 0)
 
-            # 4. Remove
+            # 4. Cleanup preserves a modified honeypot rather than deleting evidence/user data.
             rem = honeypot.remove_honeypot([p1])
-            self.assertGreaterEqual(rem["eliminados"], 1)
-            self.assertFalse(Path(setup_res["ficheros"][0]).exists())
+            self.assertEqual(rem["eliminados"], 0)
+            self.assertTrue(Path(setup_res["ficheros"][0]).exists())
+            self.assertTrue(honeypot.check_honeypot()["activo"])
 
     def test_memory_audit_interfaz(self):
         procs = [{"pid": 99999, "name": "chrome.exe", "cmd": "chrome.exe", "exe": "/usr/bin/chrome"}]

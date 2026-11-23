@@ -1,20 +1,20 @@
 # 🛡️ CookieGuard
 
-> **Monitor local de integridad para cookies de sesión de navegadores (Chrome, Firefox, Edge, Brave). Detección de accesos no autorizados, Killswitch de red y respuesta rápida ante exfiltración de infostealers.**
+> **Auditor local heurístico de metadatos de sesiones de navegador, con alertas y herramientas de respuesta guiada. No descifra valores de cookies y no sustituye a un EDR o antivirus.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.5.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.6.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
-![Privacidad](https://img.shields.io/badge/Privacidad-100%25%20Offline-red)
-![Dependencias](https://img.shields.io/badge/Dependencias-Zero%20(Solo%20Stdlib)-orange)
+![Privacidad](https://img.shields.io/badge/Privacidad-Local--first-blue)
+![Dependencias](https://img.shields.io/badge/Core-Solo%20stdlib-orange)
 ![Licencia](https://img.shields.io/badge/Licencia-MIT-purple)
 
 ---
 
 ## 🎮 Demos y Simulaciones Interactivas en Vivo (Prueba online en tu navegador)
 
-Puedes probar de forma interactiva e inmediata cómo responde CookieGuard ante un incidente real sin instalar nada:
+Puedes explorar simulaciones interactivas sin instalar nada. Son demostraciones visuales, no sensores conectados al equipo ni pruebas de detección real:
 
 - 🌐 **[Abrir Centro de Demos en Vivo (GitHub Pages)](https://4n0d1n.github.io/CookieGuard/)**
 - 🖥️ **[Lanzar Demo Windows 11 Online](https://4n0d1n.github.io/CookieGuard/docs/simulaciones/simulacion_incidente_windows.html)** *(Recrea el Toast nativo flotante de Windows 11, telemetría DPAPI, triaje forense y Killswitch de red)*
@@ -24,32 +24,23 @@ Puedes probar de forma interactiva e inmediata cómo responde CookieGuard ante u
 
 ---
 
-## 🎯 ¿Qué problema resuelve CookieGuard?
+## 🎯 Qué hace CookieGuard
 
-Los **infostealers modernos** (Lumma, Redline, Stealc, Vidar, Rhadamanthys) no buscan contraseñas almacenadas: su botín principal son las **cookies de sesión activas** almacenadas en las bases de datos SQLite de tus navegadores.
+CookieGuard inspecciona metadatos locales de perfiles de navegador y presenta señales heurísticas para ayudar a priorizar una revisión. Puede generar informes y snapshots, preparar enlaces o scripts de respuesta y ofrece demos de interfaz.
 
-Con estas cookies, un ciberdelincuente puede:
-- Clonar tu sesión autenticada en su propio equipo.
-- **Evadir completamente el factor de doble autenticación (2FA / MFA).**
-- Tomar control inmediato de cuentas de Google Workspace, GitHub, Microsoft 365, AWS o portales financieros sin disparar avisos de cambio de contraseña.
-
-**CookieGuard actúa como un radar y escudo local:**
-1. **Inventaría:** Identifica qué sesiones críticas tienes abiertas en tus navegadores.
-2. **Vigila en tiempo real:** Detecta si procesos desconocidos intentan leer tus bases de cookies.
-3. **Alerta y responde:** Te avisa con un popup interactivo en tu sistema y abre un panel en tu navegador con enlaces directos en 1-clic para revocar las sesiones comprometidas.
-4. **Aisla la red (Killswitch):** Corta el tráfico saliente para evitar que el stealer suba las cookies a sus servidores de mando y control (C2).
-5. **Cebos Canary:** Planta cookies trampa cuya lectura delata inequívocamente al atacante.
-6. **Alertas móviles (Webhook):** Notifica de inmediato a tu móvil mediante ntfy.sh o Discord ante incidentes críticos.
+**Importante:** las alertas no confirman por sí solas un robo. La vigilancia de acceso a archivos depende de la plataforma y del método de sondeo; no hay bloqueo universal de lectura en tiempo real. Las acciones de revocación requieren que la persona use los sitios oficiales; los canary DNS requieren dominio y monitoreo propios. Los módulos marcados como experimentales o simulados no deben interpretarse como protección garantizada.
 
 ---
 
 ## 🔒 Principios de Privacidad y Seguridad (Zero-Trust)
 
-- **100% Offline:** CookieGuard **NUNCA** envía tus datos ni credenciales fuera de tu equipo.
-- **Solo Metadatos:** **NUNCA** descifra ni almacena los valores de tus cookies o contraseñas. Solo lee metadatos (nombre de cookie, dominio, fecha de expiración).
-- **Cero Dependencias Externas:** Funciona exclusivamente con la biblioteca estándar de Python y herramientas nativas del sistema operativo (`netsh`, `iptables`, `curl`, PowerShell). Sin paquetes `pip` de terceros que puedan ser comprometidos en la cadena de suministro.
+- **Local-first:** el análisis base es local y puede ejecutarse sin red. Las funciones de actualización de IoCs y notificaciones externas usan red solo cuando se configuran o activan.
+- **Solo metadatos de cookies:** el análisis no descifra ni muestra los valores de cookies ni contraseñas. Los snapshots pueden contener otros datos del sistema; revisa su contenido antes de compartirlos.
+- **Dependencias:** el analizador base usa la biblioteca estándar. El cifrado AES-GCM de snapshots requiere la dependencia opcional `cryptography`; consulta `requirements-forensics.txt`.
 
 ---
+
+> **Nota de alcance:** los apartados históricos de versiones anteriores describen funciones y prototipos de esas entregas; no constituyen una certificación independiente. Para los límites de las funciones revisadas, consulta la sección v1.6.0 y `CHECKLIST-VERIFICACION.md`.
 
 ## 🚀 Novedades de la Versión 1.1.0
 
@@ -67,26 +58,17 @@ Con estas cookies, un ciberdelincuente puede:
 ---
 
 
-## 🚀 Novedades de la Versión 1.5.0
+## 🛡️ Novedades de seguridad de v1.6.0
 
-- 🍯 **Perfil Honeypot / Trampa contra Infostealers (Indicador I18):**
-  - Siembra de carpetas señuelo (`Profile Honeypot`) en los directorios de perfiles de Chrome, Edge, Brave y Firefox.
-  - Genera una base SQLite señuelo con credenciales corporativas simuladas (`.vault-admin.corp-sso.internal`).
-  - Si un infostealer rastrea perfiles de navegador y lee o modifica la base trampa, CookieGuard dispara una alerta roja inmediata de contención.
-- 🧠 **Auditoría de Memoria y DLL Injection / Hooking (Indicador I19):**
-  - Inspecciona la memoria activa de los procesos del navegador (`/proc/*/maps` en Linux, módulos de procesos en Windows).
-  - Detecta DLLs o librerías dinámicas cargadas desde rutas temporales anómalas (`Temp`, `AppData\Local\Temp`) o hooks sospechosos de intercepción.
-- 📦 **Live Forensics Snapshot ZIP:**
-  - Empaqueta en caliente un archivo ZIP con el estado volátil del equipo en el instante del incidente: árbol de procesos con líneas de comando, conexiones de red activas, caché DNS y hashes SHA-256 de ejecutables sospechosos con su `manifest.json`.
-- 📑 **Dossier de Incidente formal alineado con MITRE ATT&CK:**
-  - Exportación de informes periciales completos en **HTML interactivo** (listo para imprimir en PDF con estilos tipográficos limpios) y **Markdown**.
-  - Mapeo automático de cada hallazgo con las técnicas del marco MITRE ATT&CK (T1539, T1555, T1055, T1071, etc.).
-- ⚡ **1-Click Batch Invalidator (Revocación por lotes):**
-  - Identifica los servicios en riesgo (Google, GitHub, Microsoft, AWS, Discord, etc.) y genera un script ejecutable (`.cmd` / `.sh`) que lanza en paralelo las páginas oficiales de gestión de dispositivos y cierre de sesiones remotas.
-- 🧰 **Integración en Modo Rescate USB (Triage):**
-  - El kit de rescate USB genera ahora automáticamente el snapshot volátil, el dossier pericial MITRE y el script de revocación urgente en un solo paso.
+- **Snapshots con privacidad por defecto:** anonimiza usuario, hostname, emails y cadenas que parezcan credenciales. No es anonimización completa: conserva marcas de tiempo, direcciones IP y otros metadatos necesarios para el análisis; revisa el ZIP antes de compartirlo.
+- **Cifrado autenticado opcional:** `cookieguard snapshot --cifrar` usa AES-256-GCM mediante `cryptography` y una derivación PBKDF2-HMAC-SHA256. Para el código fuente instala `python -m pip install -r requirements-forensics.txt`; el analizador básico no requiere esa dependencia. Descifra con `cookieguard snapshot-descifrar archivo.cgenc`. No se implementa criptografía propia.
+- **Export STIX 2.1 conservador:** los hallazgos heurísticos se exportan como notas de incidente y referencias MITRE. No se fabrican indicadores de compromiso ni se presentan heurísticas como IoCs confirmados.
+- **DNS canary manual:** genera un nombre único bajo un dominio que controles y compara una lista de consultas DNS local. No despliega señuelos ni recibe callbacks externos por sí solo; una alerta externa requiere DNS autoritativo y monitoreo que configures y controles.
+- **Honeypot más seguro:** CookieGuard no reutiliza ni sobrescribe la carpeta señuelo si ya existe; la limpieza solo elimina artefactos intactos con marcador e hashes coincidentes. Si el señuelo fue alterado o tiene archivos adicionales, se preserva.
 
----
+### Límites que deben quedar claros
+
+El honeypot es un indicador heurístico, no un detector de lectura universal ni en tiempo real: la comprobación de descriptores abiertos existe en Linux y la detección de cambios depende del sondeo; Windows no ofrece aquí vigilancia fiable de lecturas. La auditoría de memoria/DLL es heurística y no certifica ausencia de malware. No hay driver de kernel, bloqueo activo de lectura ni callback DNS gestionado por CookieGuard. Las demos de `docs/simulaciones/` son simulaciones, no sensores reales.
 
 ## 🚀 Novedades de la Versión 1.4.0
 

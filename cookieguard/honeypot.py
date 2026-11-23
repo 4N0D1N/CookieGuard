@@ -7,6 +7,7 @@ dispara una alerta inmediata de contención antes de que alcancen los perfiles l
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -21,6 +22,7 @@ from .common import IS_LINUX, IS_WIN, data_dir, log
 
 HONEYPOT_PROFILE_NAME = "Profile Honeypot"
 BASELINE_FILE = "honeypot_baseline.json"
+MARKER_FILENAME = ".cookieguard_honeypot_marker.json"
 
 
 def _get_baseline_path() -> Path:
@@ -34,8 +36,15 @@ def setup_honeypot(profiles: list[Profile] | None = None) -> dict[str, Any]:
 
     creados = []
     baseline_records = {}
+    base_file = _get_baseline_path()
+    if base_file.is_file():
+        try:
+            existing = json.loads(base_file.read_text(encoding="utf-8"))
+            if isinstance(existing, dict):
+                baseline_records.update(existing)
+        except Exception:
+            pass
 
-    # Identificar carpetas raíz de los navegadores detectados (donde viven los perfiles)
     roots_procesadas = set()
     for p in profiles:
         r = p.root.resolve()
@@ -47,13 +56,22 @@ def setup_honeypot(profiles: list[Profile] | None = None) -> dict[str, Any]:
             continue
 
         trap_dir = r / HONEYPOT_PROFILE_NAME
+        marker_file = trap_dir / MARKER_FILENAME
+
+        # Salvaguarda: nunca tocar un directorio preexistente, ni siquiera uno
+        # que contenga un marcador antiguo. El segundo setup conserva su estado.
+        if trap_dir.exists():
+            log(f"[Honeypot] Omitiendo {trap_dir}: el directorio ya existe; no se modificará.")
+            continue
+
         try:
-            trap_dir.mkdir(parents=True, exist_ok=True)
+            trap_dir.mkdir(parents=True, exist_ok=False)
+
             net_dir = trap_dir / "Network"
             net_dir.mkdir(exist_ok=True)
 
             cookies_db = net_dir / "Cookies"
-            _create_decoy_sqlite(cookies_db)
+            _create_decoy_sqlite(cookies_db, marker_file)
 
             # Generar también un fichero de configuración falso (Preferences)
             prefs = trap_dir / "Preferences"
@@ -62,6 +80,19 @@ def setup_honeypot(profiles: list[Profile] | None = None) -> dict[str, Any]:
                     "profile": {"name": "Default Admin Backup", "created_by_version": "130.0.0.0"},
                     "account_info": [{"email": "security-audit@internal-domain.local", "full_name": "Trap Canary"}]
                 }, indent=2), encoding="utf-8")
+
+            managed_files = [cookies_db, prefs]
+            file_hashes = {}
+            for managed in managed_files:
+                if managed.is_file():
+                    file_hashes[str(managed.relative_to(trap_dir))] = hashlib.sha256(managed.read_bytes()).hexdigest()
+            marker_file.write_text(json.dumps({
+                "creado_por": "CookieGuard",
+                "tipo": "honeypot_decoy",
+                "creado": time.time(),
+                "seguridad": "aislado_inocuo",
+                "sha256_archivos": file_hashes
+            }, indent=2), encoding="utf-8")
 
             st = cookies_db.stat()
             baseline_records[str(cookies_db)] = {
@@ -78,7 +109,6 @@ def setup_honeypot(profiles: list[Profile] | None = None) -> dict[str, Any]:
             log(f"[Honeypot] Error creando perfil trampa en {r}: {e}")
 
     # Guardar la línea base
-    base_file = _get_baseline_path()
     try:
         base_file.write_text(json.dumps(baseline_records, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception as e:
@@ -92,13 +122,11 @@ def setup_honeypot(profiles: list[Profile] | None = None) -> dict[str, Any]:
     }
 
 
-def _create_decoy_sqlite(db_path: Path) -> None:
+def _create_decoy_sqlite(db_path: Path, marker_file: Path | None = None) -> None:
     """Crea una base de datos SQLite con estructura realista de cookies Chromium y cebos inocuos."""
     if db_path.exists():
-        try:
-            db_path.unlink()
-        except Exception:
-            pass
+        # Nunca sobrescribir archivos existentes, incluso en un directorio marcado.
+        return
 
     conn = sqlite3.connect(str(db_path))
     try:
@@ -152,7 +180,7 @@ def check_honeypot() -> dict[str, Any]:
         return {
             "activo": False,
             "disparado": False,
-            "motivo": "No existe línea base de honeypot. Ejecute 'cookieguard honeypot-setup' primero."
+            "motivo": "No existe línea base de honeypot. Ejecute 'cookieguard honeypot-deploy' primero."
         }
 
     try:
@@ -224,6 +252,7 @@ def remove_honeypot(profiles: list[Profile] | None = None) -> dict[str, Any]:
         profiles = discover()
 
     eliminados = 0
+    removed_dirs: set[Path] = set()
     roots_procesadas = set()
     for p in profiles:
         r = p.root.resolve()
@@ -231,19 +260,60 @@ def remove_honeypot(profiles: list[Profile] | None = None) -> dict[str, Any]:
             continue
         roots_procesadas.add(r)
         trap_dir = r / HONEYPOT_PROFILE_NAME
-        if trap_dir.is_dir():
+        marker_file = trap_dir / MARKER_FILENAME
+
+        # Solo borrar un perfil creado por CookieGuard si todos los archivos siguen
+        # intactos y no hay ningún contenido adicional. Si fue modificado, preservarlo.
+        if trap_dir.is_dir() and marker_file.is_file():
             try:
-                shutil.rmtree(trap_dir, ignore_errors=True)
-                eliminados += 1
-                log(f"[Honeypot] Eliminado perfil señuelo en {trap_dir}")
+                marker = json.loads(marker_file.read_text(encoding="utf-8"))
+                expected = marker.get("sha256_archivos", {}) if marker.get("creado_por") == "CookieGuard" else {}
+                all_items = list(trap_dir.rglob("*"))
+                has_symlink = any(item.is_symlink() for item in all_items)
+                actual_paths = {
+                    str(item.relative_to(trap_dir)) for item in all_items
+                    if item.is_file() and item != marker_file
+                }
+                actual_dirs = {
+                    str(item.relative_to(trap_dir)) for item in all_items if item.is_dir()
+                }
+                expected_dirs = {
+                    str(Path(rel_path).parent)
+                    for rel_path in expected
+                    if str(Path(rel_path).parent) != "."
+                }
+                intact = bool(expected) and actual_paths == set(expected) and actual_dirs == expected_dirs and not has_symlink
+                if intact:
+                    for rel_path, digest in expected.items():
+                        candidate = trap_dir / rel_path
+                        if not candidate.is_file() or hashlib.sha256(candidate.read_bytes()).hexdigest() != digest:
+                            intact = False
+                            break
+                if intact:
+                    shutil.rmtree(trap_dir)
+                    removed_dirs.add(trap_dir.resolve())
+                    eliminados += 1
+                    log(f"[Honeypot] Eliminado perfil señuelo intacto en {trap_dir}")
+                else:
+                    log(f"[Honeypot] Perfil {trap_dir} modificado o con contenido extra; se preserva por seguridad.")
             except Exception as e:
-                log(f"[Honeypot] Error eliminando {trap_dir}: {e}")
+                log(f"[Honeypot] Error comprobando {trap_dir}; se preserva por seguridad: {e}")
+        elif trap_dir.is_dir():
+            log(f"[Honeypot] Protección activa: {trap_dir} no contiene marcador CookieGuard, no se eliminará.")
 
     base_file = _get_baseline_path()
     if base_file.exists():
         try:
-            base_file.unlink()
-        except Exception:
-            pass
+            records = json.loads(base_file.read_text(encoding="utf-8"))
+            retained = {
+                path: info for path, info in records.items()
+                if not any(Path(path).resolve().is_relative_to(directory) for directory in removed_dirs)
+            }
+            if retained:
+                base_file.write_text(json.dumps(retained, indent=2, ensure_ascii=False), encoding="utf-8")
+            else:
+                base_file.unlink()
+        except Exception as e:
+            log(f"[Honeypot] No se pudo actualizar la línea base durante la limpieza: {e}")
 
     return {"ok": True, "eliminados": eliminados}
