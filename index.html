@@ -27,7 +27,7 @@
         </div>
         <div>
           <span class="font-extrabold tracking-tight text-white text-lg">CookieGuard</span>
-          <span class="ml-2 text-xs font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60">v2.3.0</span>
+          <span class="ml-2 text-xs font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60">v2.4.0</span>
         </div>
       </div>
       <div class="flex items-center gap-4">
@@ -204,47 +204,50 @@
         </div>
       </div>
 
-      <!-- Card Doctor & Blindaje v2.3.0 -->
+      <!-- Card Rescate, Descargas & Trampa v2.4.0 -->
       <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 sm:p-8 hover:border-amber-500/50 transition-all duration-300 shadow-xl shadow-black/40 flex flex-col justify-between relative group overflow-hidden">
         <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-600/10 rounded-full blur-3xl group-hover:bg-amber-600/20 transition-all"></div>
         <div>
           <div class="flex items-center justify-between mb-5">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
               </div>
               <div>
-                <h2 class="text-xl font-bold text-white">Blindaje & Doctor (v2.3.0)</h2>
-                <p class="text-xs text-slate-400 font-mono">CDP Debugging + Hardening + Doctor</p>
+                <h2 class="text-xl font-bold text-white">Rescate & Trampa Canary (v2.4.0)</h2>
+                <p class="text-xs text-slate-400 font-mono">Triaje Cero-Confianza + Descargas + Cebo SQLite</p>
               </div>
             </div>
-            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30">Novedad v2.3.0</span>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30">Novedad v2.4.0</span>
           </div>
 
           <p class="text-slate-300 text-sm mb-6 leading-relaxed">
-            Detección pasiva de malware que usa <span class="text-amber-300 font-mono">Chrome DevTools Protocol (CDP)</span> para robar cookies de memoria viva sin tocar disco. Diagnóstico holístico del estado de sensores con <span class="text-white font-mono">doctor</span> y generación de directivas Registry y Linux.
+            Asistente guiado de contención ante incidentes activos (<span class="text-amber-300 font-mono">cookieguard rescue</span>), auditoría forense de ejecutables en el historial (<span class="text-white font-mono">cookieguard descargas</span>) y trampa activa con señuelo SQLite (<span class="text-white font-mono">cookieguard trap</span>) con detección inmediata de manipulación.
           </p>
 
           <div class="space-y-2 mb-8 text-xs font-mono text-slate-400">
             <div class="flex items-center gap-2">
               <span class="text-emerald-400 font-bold">✓</span>
-              <span>Caza de banderas sospechosas (--remote-debugging-port)</span>
+              <span>Protocolo de rescate cero-confianza y contención guiada</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-emerald-400 font-bold">✓</span>
-              <span>Generador de directivas .reg (Windows) y .json (Linux)</span>
+              <span>Auditoría de ejecutables y dobles extensiones en historiales</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-emerald-400 font-bold">✓</span>
-              <span>CookieGuard Doctor: salud de sensores en 5 segundos</span>
+              <span>Trampa Canary SQLite activa con alerta ante manipulación</span>
             </div>
           </div>
         </div>
 
         <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-800/80">
-          <a href="https://github.com/4N0D1N/CookieGuard#novedades-y-mejoras-v230" target="_blank" class="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold text-sm py-3 px-4 rounded-xl text-center shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2">
-            <span>Ver Documentación Técnica</span>
+          <a href="https://github.com/4N0D1N/CookieGuard/blob/main/docs/Manual.md" target="_blank" class="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold text-sm py-3 px-4 rounded-xl text-center shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2">
+            <span>Ver Manual de Usuario</span>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </a>
+          <a href="https://github.com/4N0D1N/CookieGuard/releases/tag/v2.4.0" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-3 px-3 rounded-xl text-center transition flex items-center justify-center">
+            Release v2.4.0
           </a>
         </div>
       </div>
@@ -254,7 +257,7 @@
     <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 mb-12">
       <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2.5">
         <span class="w-3 h-3 rounded-sm bg-cyan-400"></span>
-        Capacidades de Detección y Defensa en Profundidad (v2.3.0)
+        Capacidades de Detección y Defensa en Profundidad (v2.4.0)
       </h3>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
