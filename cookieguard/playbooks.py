@@ -622,6 +622,22 @@ def generate_playbook_html(services: list[dict[str, Any]] | None = None, output_
             updateProgress();
         }});
     </script>
+<div id="cg-toast" style="position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#111;color:#fff;padding:12px 16px;border-radius:10px;max-width:90%;font:14px sans-serif;display:none;z-index:99;word-break:break-all"></div>
+<script>
+document.addEventListener('click', function (ev) {{
+  var a = ev.target.closest && ev.target.closest('a.btn[href^="https://"]');
+  if (!a) return;
+  ev.preventDefault();
+  var url = a.href, w = null;
+  try {{ w = window.open(url, '_blank', 'noopener'); }} catch (e) {{}}
+  if (w) return;
+  var t = document.getElementById('cg-toast');
+  var done = function (m) {{ t.textContent = m + ' ' + url; t.style.display = 'block'; setTimeout(function () {{ t.style.display = 'none'; }}, 9000); }};
+  if (navigator.clipboard && navigator.clipboard.writeText) {{
+    navigator.clipboard.writeText(url).then(function () {{ done('El visor bloquea ventanas nuevas. Enlace copiado, pégalo en tu navegador:'); }}, function () {{ done('El visor bloquea ventanas nuevas. Copia este enlace:'); }});
+  }} else {{ done('El visor bloquea ventanas nuevas. Copia este enlace:'); }}
+}});
+</script>
 </body>
 </html>
 """
