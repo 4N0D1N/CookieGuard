@@ -1,6 +1,16 @@
 """Linea de comandos de CookieGuard.  python -m cookieguard <orden>"""
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+if __package__ in (None, ''):
+    _parent = str(Path(__file__).resolve().parent.parent)
+    if _parent not in sys.path:
+        sys.path.insert(0, _parent)
+    import cookieguard
+    __package__ = 'cookieguard'
+
+
 import argparse
 import io
 import json

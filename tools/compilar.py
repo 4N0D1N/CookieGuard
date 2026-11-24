@@ -36,6 +36,7 @@ def main():
         "--clean",
         "--onefile",
         "--name", "CookieGuard",
+        "--collect-submodules", "cookieguard",
         "--add-data", data_catalogo,
         "--add-data", data_config,
         "--distpath", str(out_dir),
