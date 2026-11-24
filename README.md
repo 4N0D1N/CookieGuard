@@ -1,8 +1,8 @@
-# 🛡️ CookieGuard v2.2.0
+# 🛡️ CookieGuard v2.3.0
 
 > **Auditor forense y escudo defensivo local contra infostealers. Monitoriza, detecta y responde al secuestro de sesiones en navegadores, aplicaciones de escritorio y portapapeles. 100% Local-first, sin telemetría y sin dependencias externas obligatorias.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.2.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.3.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%2010%2F11%20%7C%20Linux-brightgreen)
@@ -387,6 +387,38 @@ Si el semáforo se sitúa en **🔴 ROJO** o confirmas un acceso no autorizado:
 Distribuido bajo la licencia **MIT**. Consulta el archivo `LICENSE` para más información.
 
 *Descargo de responsabilidad: CookieGuard es una herramienta defensiva y de concienciación de seguridad. Los indicadores heurísticos son señales de alerta preventiva y no constituyen una certificación pericial infalible ni garantía de invulnerabilidad. El usuario es el único responsable de las acciones de revocación y administración de sus cuentas.*
+
+## Novedades y Mejoras (v2.3.0)
+
+Estas funciones añaden capacidades proactivas de blindaje y diagnóstico profundo del entorno:
+
+### 🕵️ Auditoría de Depuración Remota y Puertos CDP (Chrome DevTools Protocol)
+- **Comando:** `python -m cookieguard remote-debug` (o `cdp`, `depuracion`; JSON: `--json`).
+- **Qué hace:** Inspecciona de forma pasiva los procesos activos de Chromium, Edge, Brave y Firefox buscando banderas de depuración (`--remote-debugging-port`, `--remote-debugging-pipe`, `--remote-allow-origins`, `--enable-automation`, `--headless`) y revisa de forma no intrusiva los puertos de loopback (9222-9229) en escucha.
+- **Por qué:** Los infostealers avanzados emplean CDP para conectarse vía WebSocket al navegador en ejecución y extraer cookies de sesión directamente desde la memoria RAM, eludiendo lecturas en disco de los ficheros SQLite.
+- **Límites:** El análisis es 100% pasivo (no abre conexiones a los puertos). Si el usuario ejecuta sesiones legítimas de desarrollo (ej. Puppeteer, Selenium, depuración web en VS Code), la herramienta las reportará como hallazgo preventivo para su validación manual.
+
+### 🛡️ Generador y Validador de Directivas de Hardening de Navegador
+- **Comandos:**
+  - Generar plantillas listas para aplicar: `python -m cookieguard politicas --salida ./mis_politicas`
+  - Auditar políticas activas en el sistema: `python -m cookieguard politicas --audit` (JSON: `--json`)
+- **Qué hace:** Crea archivos de configuración de políticas empresariales a nivel de sistema operativo:
+  - **Windows (`.reg`):** Claves de Registro para `HKLM\SOFTWARE\Policies\Google\Chrome` y `HKLM\SOFTWARE\Policies\Microsoft\Edge` que desactivan `RemoteDebuggingAllowed`, fuerzan `CommandLineFlagSecurityWarningsEnabled` y activan `SitePerProcess`.
+  - **Linux (`.json`):** Archivos de políticas administradas para `/etc/opt/chrome/policies/managed/`, `/etc/chromium/policies/managed/` y Firefox `policies.json`.
+- **Por qué:** Impide que cualquier malware o proceso no privilegiado pueda lanzar el navegador con argumentos de depuración remota o inyectar extensiones sin supervisión.
+- **Límites:** La aplicación de directivas requiere permisos administrativos (UAC en Windows, `sudo` en Linux) y el reinicio de los navegadores.
+
+### 🩺 Chequeo Integral de Salud de Sensores (CookieGuard Doctor)
+- **Comando:** `python -m cookieguard doctor` (o `diagnostico`, `salud`; JSON: `--json`).
+- **Qué hace:** Diagnostica en 5 segundos la disponibilidad y estado de todos los sensores y defensas locales en Windows y Linux:
+  - Detección de perfiles de navegadores soportados.
+  - Disponibilidad del subsistema de notificaciones de escritorio (Toast nativo / notify-send).
+  - Estado del cortafuegos de contención (netsh / iptables / nftables).
+  - Capacidad de auditoría de persistencia (Registro, tareas programadas, systemd, crontab).
+  - Acceso seguro al portapapeles y clipper malware.
+  - Integridad del motor SQLite de lectura no destructiva.
+- **Por qué:** Permite saber con exactitud si el equipo cuenta con todas las herramientas necesarias para la contención o si requiere instalar algún componente auxiliar opcional (ej. `libnotify-bin` en Linux).
+- **Límites:** Si alguna herramienta auxiliar no está presente, CookieGuard entra en modo degradado seguro sin detener el resto de auditorías esenciales.
 
 ## Mejoras añadidas (v2.2.0)
 

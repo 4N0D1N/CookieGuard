@@ -224,6 +224,30 @@ def main(argv=None):
     scr.add_argument("--json", action="store_true", help="Salida en JSON")
     sub.add_parser("revoke-scripts", help="Alias de scripts-revocacion").add_argument("--salida")
 
+    # v2.3 Subparsers
+    rd = sub.add_parser("remote-debug", help="Audita procesos buscando depuración remota o puertos CDP")
+    rd.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("depuracion", help="Alias de remote-debug").add_argument("--json", action="store_true")
+    sub.add_parser("cdp", help="Alias de remote-debug").add_argument("--json", action="store_true")
+
+    bh = sub.add_parser("browser-hardening", help="Genera y audita plantillas de directivas de hardening para navegadores")
+    bh.add_argument("--salida", "--output-dir", dest="salida", help="Directorio donde generar las directivas")
+    bh.add_argument("--audit", action="store_true", help="Solo auditar políticas activas en el sistema")
+    bh.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    p1 = sub.add_parser("politicas", help="Alias de browser-hardening")
+    p1.add_argument("--salida")
+    p1.add_argument("--audit", action="store_true")
+    p1.add_argument("--json", action="store_true")
+    p2 = sub.add_parser("hardening-navegador", help="Alias de browser-hardening")
+    p2.add_argument("--salida")
+    p2.add_argument("--audit", action="store_true")
+    p2.add_argument("--json", action="store_true")
+
+    doc = sub.add_parser("doctor", help="Chequeo integral de salud y diagnóstico de sensores locales (Doctor)")
+    doc.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("diagnostico", help="Alias de doctor").add_argument("--json", action="store_true")
+    sub.add_parser("salud", help="Alias de doctor").add_argument("--json", action="store_true")
+
     args, _extra = ap.parse_known_args(argv)
 
     from . import actions, engine, reports
@@ -886,6 +910,72 @@ def main(argv=None):
             print(f"  Guía Corporativa M365/Google: {res['guia_corporativa_md']}")
             print("  [INFO] Ejecuta el script según tu sistema operativo para invalidar sesiones activas de inmediato.")
         return 0
+
+    elif args.cmd in ("remote-debug", "depuracion", "cdp"):
+        from . import remote_debugging_audit
+        res = remote_debugging_audit.audit_remote_debugging()
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print("=== AUDITORÍA DE DEPURACIÓN REMOTA Y PUERTOS CDP (COOKIEGUARD) ===")
+            print(f"  Nivel General : {res['nivel_general']}")
+            print(f"  Total Alertas : {res['total_alertas']}")
+            print(f"  Procesos Auditados: {res['total_procesos_auditados']}")
+            if res["procesos_sospechosos"]:
+                print("")
+                print("  [ALERTA] Procesos de navegador con banderas de depuración:")
+                for p in res["procesos_sospechosos"]:
+                    print(f"   * PID {p['pid']} ({p['exe']}) - Severidad: {p['severidad']}")
+                    for h in p["hallazgos"]:
+                        print(f"     -> {h['flag']}: {h['descripcion']}")
+            if res["puertos_cdp_activos"]:
+                print("")
+                print(f"  [ALERTA] Puertos CDP activos en loopback: {', '.join(str(x) for x in res['puertos_cdp_activos'])}")
+            print("")
+            print(f"  Recomendación: {res['recomendacion']}")
+        return 0 if res["nivel_general"] in ("Limpio", "Medio") else 1
+
+    elif args.cmd in ("browser-hardening", "politicas", "hardening-navegador"):
+        from . import browser_hardening
+        if getattr(args, "audit", False):
+            status = browser_hardening.audit_system_policies()
+            if getattr(args, "json", False):
+                import json as _j
+                print(_j.dumps(status, indent=2, ensure_ascii=False))
+            else:
+                print("=== ESTADO DE POLÍTICAS DE HARDENING EN EL SISTEMA ===")
+                for h in status["hallazgos"]:
+                    print(f"  {h}")
+                for r in status["recomendaciones"]:
+                    print(f"  [RECOMENDACIÓN] {r}")
+            return 0
+        else:
+            salida = getattr(args, "salida", None)
+            res = browser_hardening.generate_hardening_bundle(output_dir=salida)
+            if getattr(args, "json", False):
+                import json as _j
+                print(_j.dumps(res, indent=2, ensure_ascii=False))
+            else:
+                print("=== DIRECTIVAS DE HARDENING DE NAVEGADOR GENERADAS ===")
+                print(f"  Directorio de salida: {res['directorio']}")
+                print("  Archivos listos para aplicar:")
+                for a in res["archivos_generados"]:
+                    print(f"   * {a}")
+                print("")
+                print("  [INFO] Sigue las instrucciones de INSTRUCCIONES_HARDENING.md para instalarlas con permisos de administrador.")
+            return 0
+
+    elif args.cmd in ("doctor", "diagnostico", "salud"):
+        from . import sensor_health
+        res = sensor_health.run_sensor_diagnostic()
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(sensor_health.format_sensor_diagnostic_cli(res))
+        return 0 if res["estado_general"] != "ERROR" else 1
+
     return 0
 
 

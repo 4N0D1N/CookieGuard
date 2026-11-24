@@ -307,6 +307,9 @@ class App(tk.Tk):
         ttk.Button(btn_grid, text="Guardián: Comprobar Ahora", command=self._tool_guardian_once).grid(row=3, column=1, padx=4, pady=3, sticky="ew")
         ttk.Button(btn_grid, text="Exportar Metadatos / Custodia", command=self._tool_forensic_custody).grid(row=3, column=2, padx=4, pady=3, sticky="ew")
         ttk.Button(btn_grid, text="Crear Guías de Revocación", command=self._tool_revocation_scripts).grid(row=4, column=0, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Depuración Remota (CDP)", command=self._tool_remote_debug).grid(row=4, column=1, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Políticas Hardening", command=self._tool_browser_hardening).grid(row=4, column=2, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="🩺 Doctor / Salud de Sensores", command=self._tool_doctor).grid(row=5, column=0, columnspan=3, padx=4, pady=3, sticky="ew")
 
         btn_grid.columnconfigure(0, weight=1)
         btn_grid.columnconfigure(1, weight=1)
@@ -800,6 +803,29 @@ class App(tk.Tk):
         from .forensic_custody import generate_forensic_custody_package
         res = generate_forensic_custody_package()
         self._show_tool_result("Exportación local de metadatos, no certificación pericial", res)
+
+    def _tool_remote_debug(self):
+        from .remote_debugging_audit import audit_remote_debugging
+        res = audit_remote_debugging()
+        self._show_tool_result("Auditoría de Depuración Remota y Puertos CDP", res)
+
+    def _tool_browser_hardening(self):
+        from .browser_hardening import generate_hardening_bundle, audit_system_policies
+        bundle = generate_hardening_bundle()
+        status = audit_system_policies()
+        self._show_tool_result("Políticas de Hardening de Navegador (Plantillas Generadas)", {
+            "archivos_generados": bundle["archivos_generados"],
+            "estado_actual": status
+        })
+
+    def _tool_doctor(self):
+        from .sensor_health import run_sensor_diagnostic, format_sensor_diagnostic_cli
+        res = run_sensor_diagnostic()
+        cli_text = format_sensor_diagnostic_cli(res)
+        widget = getattr(self, "txt_herramientas", None)
+        if widget is not None:
+            widget.delete("1.0", "end")
+            widget.insert("end", cli_text)
 
     def _tool_revocation_scripts(self):
         from .revocation_scripts import generate_revocation_scripts
