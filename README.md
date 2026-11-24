@@ -2,7 +2,7 @@
 
 > **Auditor local heurístico de metadatos de sesiones de navegador, con alertas y herramientas de respuesta guiada. No descifra valores de cookies y no sustituye a un EDR o antivirus.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.9.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.0.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
@@ -57,6 +57,35 @@ CookieGuard inspecciona metadatos locales de perfiles de navegador y presenta se
 
 ---
 
+
+## 🚀 Novedades de la Versión 2.0.0
+
+- **🚦 Resumen Ejecutivo 'Modo Dummy' (`cookieguard dummy` o `cookieguard resumen`):**
+  - Diagnóstico visual de semáforo ultra-simplificado para cualquier persona:
+    - 🟢 **VERDE:** Sin indicios de accesos no autorizados ni anomalías en el sistema.
+    - 🟡 **AMARILLO:** Sesiones activas importantes abiertas o configuraciones a revisar preventivamente.
+    - 🔴 **ROJO:** Alerta de posible compromiso activo, procesos sospechosos o persistencia detectada.
+  - Genera automáticamente los **3 pasos prioritarios en orden de urgencia** para los primeros 5 minutos.
+  - Exportación opcional a informe HTML moderno y responsive (`--html resumen.html`) y formato JSON (`--json`).
+
+- **⚙️ Auditoría de Persistencia y Tareas Programadas (`cookieguard persistence`):**
+  - Detecta mecanismos comunes utilizados por infostealers (RedLine, Lumma, Vidar, Stealc) para mantenerse residentes en el equipo.
+  - Windows: tareas programadas (`schtasks`), carpeta de inicio (`Startup`) y scripts de arranque.
+  - Linux: archivos `.desktop` en `~/.config/autostart` y tareas de usuario en `crontab`.
+  - Heurística avanzada: ejecutables invocados desde `%TEMP%`, `/tmp` o `/dev/shm`, scripts PowerShell con flags ocultos (`-WindowStyle Hidden`, `-enc`), `cscript`/`wscript` sospechosos o nombres falsos de navegadores (`chrome_update.exe`).
+
+- **🔏 Verificación de Integridad y Firmas de Binarios (`cookieguard integrity`):**
+  - Audita los ejecutables instalados de Chrome, Edge, Firefox, Brave, etc. para detectar binarios parcheados o troyanizados.
+  - Windows: verificación nativa de firma digital Authenticode (`Status == Valid` y certificado expedido por Google LLC, Microsoft Corporation, Mozilla Corporation, etc.).
+  - Linux: validación de permisos de archivo (alerta ante banderas SUID anómalas) y resolución de rutas legítimas del sistema (`/usr/bin`, `/bin`, `/opt`, `/snap`, `/nix/store`).
+
+- **🌐 Auditoría de Red Local, Archivo hosts y DNS (`cookieguard network` o `cookieguard hosts`):**
+  - Revisa el archivo `hosts` (`/etc/hosts` en Linux, `System32\drivers\etc\hosts` en Windows).
+  - Alerta ante *Security Sinkholing*: redirección maliciosa de dominios de antivirus y seguridad (`virustotal.com`, `kaspersky.com`, `bitdefender.com`, `microsoft.com`) a `127.0.0.1` o `0.0.0.0` para neutralizar actualizaciones y telemetría de protección.
+  - Alerta ante *Auth Spoofing*: portales de inicio de sesión redirigidos a direcciones IP no estándar.
+  - Inspección pasiva de servidores DNS configurados.
+
+---
 
 ## 🚀 Novedades de la Versión 1.9.0
 

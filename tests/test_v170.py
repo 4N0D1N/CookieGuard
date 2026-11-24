@@ -218,7 +218,7 @@ class TestPlaybooks(unittest.TestCase):
 
 class TestVersionConsistency(unittest.TestCase):
     def test_version_170(self):
-        self.assertIn(VERSION, ("1.7.0", "1.8.0", "1.9.0"))
+        self.assertIn(VERSION, ("1.7.0", "1.8.0", "1.9.0", "2.0.0"))
 
 
 if __name__ == "__main__":

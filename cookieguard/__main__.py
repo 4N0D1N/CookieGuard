@@ -162,6 +162,23 @@ def main(argv=None):
     ct.add_argument("--callback", default=None, help="URL anotada como referencia; no se contacta")
     ct.add_argument("--json", action="store_true", help="Salida en formato JSON")
 
+    dm = sub.add_parser("dummy", help="Resumen semáforo ultra-simplificado para dummies")
+    dm.add_argument("--html", default=None, help="Ruta para generar informe HTML (opcional)")
+    dm.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    sub.add_parser("resumen", help="Alias de 'dummy': resumen semáforo para dummies")
+
+    per = sub.add_parser("persistence", help="Auditoría de persistencia y tareas programadas (schtasks, autostart, cron)")
+    per.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    integ = sub.add_parser("integrity", help="Verifica firmas e integridad de binarios de navegadores instalados")
+    integ.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    netw = sub.add_parser("network", help="Audita archivo hosts local (sinkholing/spoofing) y DNS")
+    netw.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    sub.add_parser("hosts", help="Alias de 'network': audita archivo hosts local")
+
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
@@ -576,6 +593,95 @@ def main(argv=None):
                 print(f"  {item['navegador']}: App-Bound marker={'presente' if item['marcador_app_bound'] else 'no detectado'}; DPAPI marker={'presente' if item['marcador_dpapi_legacy'] else 'no detectado'}")
             print(f"  {res['resumen']}")
         return 0
+    elif args.cmd in ("dummy", "resumen"):
+        from . import dummy_summary, engine, persistence_audit, network_audit
+        try:
+            res_analysis = engine.run_analysis(update_state=False)
+            veredicto = res_analysis.get("veredicto", {})
+            is_red = veredicto.get("nivel") == "rojo"
+            crit_sessions = sum(len(g.get("sesiones", [])) for g in res_analysis.get("grupos", []) if g.get("criticidad") == "alta")
+        except Exception:
+            is_red = False
+            crit_sessions = 0
+        
+        p_res = persistence_audit.run_persistence_audit()
+        n_res = network_audit.run_network_audit()
+        
+        summary = dummy_summary.compute_traffic_light(
+            has_critical_detections=is_red,
+            active_critical_sessions=crit_sessions,
+            has_persistence_alerts=p_res.get("has_alerts", False),
+            has_hosts_hijack=n_res.get("has_critical", False)
+        )
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(summary, indent=2, ensure_ascii=False))
+        else:
+            print(dummy_summary.format_dummy_summary_cli(summary))
+            html_path = getattr(args, "html", None)
+            if html_path:
+                dummy_summary.generate_dummy_summary_html(summary, html_path)
+                print("[+] Informe HTML generado con éxito en: " + str(html_path))
+        return 0
+
+    elif args.cmd == "persistence":
+        from . import persistence_audit
+        res = persistence_audit.run_persistence_audit()
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== AUDITORÍA DE PERSISTENCIA ({res['total_audited']} elementos analizados, {res['suspicious_count']} sospechosos) ===")
+            if res["suspicious_items"]:
+                for s in res["suspicious_items"]:
+                    print(f"  [ALERTA PERSISTENCIA] Tipo: {s.get('tipo')} | Archivo/Tarea: {s.get('nombre') or s.get('tarea') or s.get('archivo')}")
+                    for a in s.get("alertas", []):
+                        print(f"      - [{a.get('severidad', 'WARNING')}] {a.get('descripcion')}")
+                        print(f"        Comando: {a.get('comando')}")
+            else:
+                print("  [OK] No se detectaron entradas de persistencia ni tareas sospechosas.")
+        return 0 if not res["has_alerts"] else 1
+
+    elif args.cmd == "integrity":
+        from . import binary_integrity
+        res = binary_integrity.audit_binary_integrity()
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== INTEGRIDAD DE BINARIOS DE NAVEGADOR ({res['total_audited']} binarios encontrados) ===")
+            for r in res["results"]:
+                v = r["verification"]
+                status_mark = "ALERTA" if r["is_tampered_risk"] else "OK"
+                print(f"  [{status_mark}] {r['browser']}: {r['path']}")
+                if "subject" in v and v["subject"]:
+                    print(f"      Firma: {v.get('status')} | Emisor: {v['subject']}")
+                elif "has_suid" in v:
+                    print(f"      Estado: {v.get('status')} | SUID: {'SÍ' if v['has_suid'] else 'NO'} | Ruta del sistema: {'SÍ' if v['is_system_path'] else 'NO'}")
+            if res["has_tampered_risk"]:
+                print("[!] ADVERTENCIA: Hay binario(s) con anomalías de integridad o firmas.")
+            else:
+                print("[OK] Todos los ejecutables auditados tienen integridad y firmas válidas.")
+        return 0 if not res["has_tampered_risk"] else 1
+
+    elif args.cmd in ("network", "hosts"):
+        from . import network_audit
+        res = network_audit.run_network_audit()
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== AUDITORÍA DE RED LOCAL Y ARCHIVO HOSTS ({res['total_hosts_entries']} reglas en {res['hosts_path']}) ===")
+            if res["anomalies"]:
+                for a in res["anomalies"]:
+                    print(f"  [ALERTA - {a.get('severidad')}] {a.get('tipo')}: Línea {a.get('linea')}")
+                    print(f"      Detalle: {a.get('detalle')}")
+            else:
+                print("  [OK] No se detectaron redirecciones maliciosas ni bloqueo de antivirus en el archivo hosts.")
+            if "dns_info" in res and res["dns_info"].get("nameservers"):
+                print(f"  Servidores DNS detectados: {', '.join(res['dns_info']['nameservers'])}")
+        return 0 if not res["has_critical"] else 1
+
     elif args.cmd == "canary-trap":
         from .canary import generate_ip_trap_canary
         res = generate_ip_trap_canary(domain=args.dominio, callback_url=args.callback)
