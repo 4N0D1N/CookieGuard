@@ -309,7 +309,13 @@ class App(tk.Tk):
         ttk.Button(btn_grid, text="Crear Guías de Revocación", command=self._tool_revocation_scripts).grid(row=4, column=0, padx=4, pady=3, sticky="ew")
         ttk.Button(btn_grid, text="Depuración Remota (CDP)", command=self._tool_remote_debug).grid(row=4, column=1, padx=4, pady=3, sticky="ew")
         ttk.Button(btn_grid, text="Políticas Hardening", command=self._tool_browser_hardening).grid(row=4, column=2, padx=4, pady=3, sticky="ew")
-        ttk.Button(btn_grid, text="🩺 Doctor / Salud de Sensores", command=self._tool_doctor).grid(row=5, column=0, columnspan=3, padx=4, pady=3, sticky="ew")
+        # Fila 5: Novedades v2.4 (Rescate, Descargas y Trampa Activa)
+        ttk.Button(btn_grid, text="🛟 Asistente de Rescate", command=self._tool_rescue).grid(row=5, column=0, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="📥 Descargas Sospechosas", command=self._tool_downloads).grid(row=5, column=1, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="🚨 Trampa Canary Activa", command=self._tool_canary_trap).grid(row=5, column=2, padx=4, pady=3, sticky="ew")
+
+        # Fila 6: Diagnóstico integral
+        ttk.Button(btn_grid, text="🩺 Doctor / Salud de Sensores", command=self._tool_doctor).grid(row=6, column=0, columnspan=3, padx=4, pady=3, sticky="ew")
 
         btn_grid.columnconfigure(0, weight=1)
         btn_grid.columnconfigure(1, weight=1)
@@ -817,6 +823,76 @@ class App(tk.Tk):
             "archivos_generados": bundle["archivos_generados"],
             "estado_actual": status
         })
+
+    def _tool_rescue(self):
+        from . import rescue_wizard
+        import tempfile
+        t_dir = Path(tempfile.gettempdir())
+        res = rescue_wizard.run_rescue_plan(auto=True, killswitch=False, kill_browsers=False, output_dir=t_dir)
+        lines = [
+            "=== ASISTENTE DE RESCATE CERO-CONFIANZA (ZERO-TRUST RESCUE) ===",
+            f"Fecha de análisis: {res['timestamp']}",
+            "",
+            "ORDEN TÁCTICO DE ROTACIÓN PRIORITARIA DE CREDENCIALES:"
+        ]
+        for f in res["rotacion_prioritaria"]:
+            lines.append(f"Fase {f['fase']} -> {f['categoria']} [{f['criticidad']}]")
+            lines.append(f"  ¿Por qué?: {f['motivo']}")
+            for a in f["acciones"]:
+                lines.append(f"   * {a}")
+            lines.append("")
+        if "archivo_reporte_html" in res:
+            lines.append(f"Reporte visual generado en: {res['archivo_reporte_html']}")
+        lines.append("")
+        lines.append("⚠️ AVISO CRÍTICO: Rota contraseñas desde otro dispositivo o con el navegador aislado.")
+        self._set_tool_text("\n".join(lines))
+
+    def _tool_downloads(self):
+        from . import downloads_audit
+        res = downloads_audit.audit_recent_downloads(hours=48)
+        lines = [
+            "=== AUDITORÍA DE DESCARGAS RECIENTES SOSPECHOSAS (48 HORAS) ===",
+            f"Total analizadas: {res['total_descargas_analizadas']}",
+            f"Críticas: {res['descargas_criticas']} | Altas: {res['descargas_altas']} | Medias: {res['descargas_medias']}",
+            ""
+        ]
+        if res["descargas"]:
+            lines.append("Descargas detectadas para revisión:")
+            for d in res["descargas"][:15]:
+                lines.append(f"[{d['nivel_riesgo']}] {d['archivo']} ({d['browser_type']} - {d['fecha']})")
+                for m in d["motivos"]:
+                    lines.append(f"  -> {m}")
+                if d.get("url_origen"):
+                    lines.append(f"  -> URL: {d['url_origen']}")
+                lines.append("")
+        else:
+            lines.append("[OK] No se detectaron descargas sospechosas en la ventana auditada.")
+        self._set_tool_text("\n".join(lines))
+
+    def _tool_canary_trap(self):
+        from . import canary_trap
+        # Desplegar si no hay trampas armadas, o revisar si ya existen
+        status = canary_trap.check_canary_traps()
+        if status["total_trampas"] == 0:
+            canary_trap.deploy_canary_traps()
+            status = canary_trap.check_canary_traps()
+
+        lines = [
+            "=== ESTADO DE TRAMPAS CANARY (WATCH-CANARY) ===",
+            f"Total trampas armadas: {status['total_trampas']}",
+            f"Intactas: {status['intactas']}",
+            ""
+        ]
+        if status["alerta_activa"]:
+            lines.append(f"🚨 ALERTA ACTIVA: {status['activadas']} manipuladas / {status['desaparecidas']} desaparecidas")
+            for d in status["detalle_activadas"]:
+                lines.append(f"* Trampa: {d['path']} -> {d['status']}")
+                for a in d.get("anomalies", [d.get("incident_reason", "")]):
+                    lines.append(f"   -> {a}")
+        else:
+            lines.append("[OK] Todas las trampas armadas permanecen intactas y sin accesos no autorizados.")
+            lines.append("Si un stealer barre tu carpeta de perfil, la trampa sonará de inmediato.")
+        self._set_tool_text("\n".join(lines))
 
     def _tool_doctor(self):
         from .sensor_health import run_sensor_diagnostic, format_sensor_diagnostic_cli

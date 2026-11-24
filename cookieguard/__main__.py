@@ -7,6 +7,7 @@ import json
 import json as _json
 import os
 import sys
+from pathlib import Path
 
 if sys.stdout is None:                      # pythonw: sin consola
     sys.stdout = io.StringIO()
@@ -242,6 +243,26 @@ def main(argv=None):
     p2.add_argument("--salida")
     p2.add_argument("--audit", action="store_true")
     p2.add_argument("--json", action="store_true")
+
+    # v2.4.0: Rescate, Descargas y Trampa Activa
+    rsc = sub.add_parser("rescue", help="Asistente de Rescate Rápido / Zero-Trust Recovery Wizard")
+    rsc.add_argument("--auto", action="store_true", help="Ejecución no interactiva y generación de informe")
+    rsc.add_argument("--killswitch", action="store_true", help="Aislar red mediante Killswitch durante el rescate")
+    rsc.add_argument("--no-kill-browsers", action="store_true", help="No detener procesos de navegadores abiertos")
+    rsc.add_argument("--salida", help="Directorio para guardar el reporte")
+    rsc.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("rescate", help="Alias de rescue").add_argument("--auto", action="store_true")
+
+    sub.add_parser("descargas", help="Alias de downloads: audita descargas recientes").add_argument("--hours", type=int, default=48)
+
+    trp = sub.add_parser("trap", help="Gestión de Trampa Activa en Tiempo Real con Archivo Cebo")
+    trp.add_argument("--deploy", action="store_true", help="Desplegar trampas señuelo en perfiles de usuario")
+    trp.add_argument("--check", action="store_true", help="Comprobar si alguna trampa ha sido leída o alterada")
+    trp.add_argument("--cleanup", action="store_true", help="Limpiar y eliminar archivos trampa desplegados")
+    trp.add_argument("--watch", action="store_true", help="Monitor continuo en bucle")
+    trp.add_argument("--interval", type=int, default=5, help="Intervalo en segundos para monitor continuo")
+    trp.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("trampa", help="Alias de trap").add_argument("--check", action="store_true")
 
     doc = sub.add_parser("doctor", help="Chequeo integral de salud y diagnóstico de sensores locales (Doctor)")
     doc.add_argument("--json", action="store_true", help="Salida en formato JSON")
@@ -559,7 +580,6 @@ def main(argv=None):
                         print(f"      - {h}")
         return 0
     elif args.cmd == "playbook":
-        from pathlib import Path
         from . import playbooks
         fmt = getattr(args, "formato", "ambos")
         salida = getattr(args, "salida", None)
@@ -965,6 +985,115 @@ def main(argv=None):
                 print("")
                 print("  [INFO] Sigue las instrucciones de INSTRUCCIONES_HARDENING.md para instalarlas con permisos de administrador.")
             return 0
+
+    elif args.cmd in ("rescue", "rescate"):
+        from . import rescue_wizard
+        salida_dir = Path(getattr(args, "salida", None) or os.getcwd())
+        res = rescue_wizard.run_rescue_plan(
+            auto=getattr(args, "auto", True),
+            killswitch=getattr(args, "killswitch", False),
+            kill_browsers=not getattr(args, "no_kill_browsers", False),
+            output_dir=salida_dir
+        )
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print("=== PROTOCOLO DE RESCATE CERO-CONFIANZA (ZERO-TRUST RESCUE) ===")
+            print(f"  Fecha y hora: {res['timestamp']}")
+            print("  [PASO 1] Contención:")
+            print(f"   * Killswitch: {res['contencion']['estado_killswitch']}")
+            print(f"   * Navegadores detenidos: {len(res['contencion']['navegadores_detenidos'])}")
+            print("")
+            print("  [PASO 2] Orden Táctico de Rotación de Credenciales:")
+            for f in res['rotacion_prioritaria']:
+                print(f"   Fase {f['fase']} -> {f['categoria']} [{f['criticidad']}]")
+                print(f"     Motivo: {f['motivo']}")
+                for a in f['acciones']:
+                    print(f"      - {a}")
+            print("")
+            print("  [PASO 3] Informes generados:")
+            if "archivo_reporte_html" in res:
+                print(f"   * Informe visual interactivo: {res['archivo_reporte_html']}")
+            if "archivo_reporte_json" in res:
+                print(f"   * Expediente estructurado: {res['archivo_reporte_json']}")
+            print("")
+            print("  ⚠️ REGLA DE ORO: No cambies las contraseñas desde este equipo si sospechas infección activa.")
+        return 0
+
+    elif args.cmd == "descargas":
+        from . import downloads_audit
+        hours = getattr(args, "hours", 48)
+        res = downloads_audit.audit_recent_downloads(hours=hours)
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== AUDITORÍA DE DESCARGAS RECIENTES SOSPECHOSAS (ÚLTIMAS {hours} HORAS) ===")
+            print(f"  Total analizadas: {res['total_descargas_analizadas']}")
+            print(f"  Críticas: {res['descargas_criticas']} | Altas: {res['descargas_altas']} | Medias: {res['descargas_medias']}")
+            if res["descargas"]:
+                print("")
+                print("  Descargas a revisar:")
+                for d in res["descargas"][:10]:
+                    print(f"   [{d['nivel_riesgo']}] {d['archivo']} ({d['browser_type']} - {d['fecha']})")
+                    for m in d["motivos"]:
+                        print(f"     -> {m}")
+                    if d.get("url_origen"):
+                        print(f"     -> URL: {d['url_origen']}")
+            else:
+                print("  [OK] No se detectaron descargas sospechosas en la ventana auditada.")
+        return 0 if res["descargas_criticas"] == 0 else 1
+
+    elif args.cmd in ("trap", "trampa"):
+        from . import canary_trap
+        if getattr(args, "deploy", False):
+            res = canary_trap.deploy_canary_traps()
+            if getattr(args, "json", False):
+                import json as _j
+                print(_j.dumps(res, indent=2, ensure_ascii=False))
+            else:
+                print(f"=== TRAMPAS CANARY DESPLEGADAS ({len(res)} activas) ===")
+                for t in res:
+                    print(f"  * {t['path']} -> {t.get('status', 'OK')}")
+            return 0
+        elif getattr(args, "cleanup", False):
+            count = canary_trap.cleanup_canary_traps()
+            print(f"[OK] Se han limpiado y eliminado {count} archivos de trampa canary.")
+            return 0
+        elif getattr(args, "watch", False):
+            interval = getattr(args, "interval", 5)
+            print(f"[*] Monitor continuo de trampa canary activo (intervalo {interval}s). Presiona Ctrl+C para detener.")
+            try:
+                res = canary_trap.watch_canary_traps(interval_seconds=interval, max_iterations=999999)
+                if res.get("alerta_activa"):
+                    print("🚨 [ALERTA ROJA] ¡UNA TRAMPA CANARY HA SIDO ACTIVADA O MANIPULADA!")
+                    for d in res.get("detalle_activadas", []):
+                        print(f"  Trampa: {d['path']}")
+                        for a in d.get("anomalies", [d.get("incident_reason", "")]):
+                            print(f"   -> {a}")
+                    return 2
+            except KeyboardInterrupt:
+                print("\n[*] Monitor detenido por el usuario.")
+            return 0
+        else:
+            # Default is check
+            res = canary_trap.check_canary_traps()
+            if getattr(args, "json", False):
+                import json as _j
+                print(_j.dumps(res, indent=2, ensure_ascii=False))
+            else:
+                print("=== ESTADO DE TRAMPAS CANARY ACTIVAS ===")
+                print(f"  Total trampas: {res['total_trampas']} | Intactas: {res['intactas']}")
+                if res["alerta_activa"]:
+                    print(f"  🚨 ALERTA ACTIVA: {res['activadas']} activadas / {res['desaparecidas']} desaparecidas")
+                    for d in res["detalle_activadas"]:
+                        print(f"   * {d['path']} -> {d['status']}")
+                        for a in d.get("anomalies", [d.get("incident_reason", "")]):
+                            print(f"     -> {a}")
+                else:
+                    print("  [OK] Todas las trampas armadas permanecen intactas y sin accesos no autorizados.")
+            return 0 if not res["alerta_activa"] else 2
 
     elif args.cmd in ("doctor", "diagnostico", "salud"):
         from . import sensor_health

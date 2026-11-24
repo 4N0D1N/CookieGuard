@@ -1,14 +1,22 @@
-# 🛡️ CookieGuard v2.3.0
+# 🛡️ CookieGuard v2.4.0
 
 > **Auditor forense y escudo defensivo local contra infostealers. Monitoriza, detecta y responde al secuestro de sesiones en navegadores, aplicaciones de escritorio y portapapeles. 100% Local-first, sin telemetría y sin dependencias externas obligatorias.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.3.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.4.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%2010%2F11%20%7C%20Linux-brightgreen)
 ![Privacidad](https://img.shields.io/badge/Privacidad-Local--first%20%26%20Zero--Telemetry-blue)
 ![Dependencias](https://img.shields.io/badge/Core-100%25%20Python%20stdlib-orange)
 ![Licencia](https://img.shields.io/badge/Licencia-MIT-purple)
+
+---
+
+## 📚 Documentación Oficial y Manuales de Uso
+
+- 📖 **[Manual Completo de Usuario (docs/Manual.md)](docs/Manual.md)**: Guía exhaustiva paso a paso para Windows y Linux.
+- 🪟 **[Guía Específica para Windows 10 y 11 (windows/README_WINDOWS.md)](windows/README_WINDOWS.md)**: Scripts directos `.cmd`, PowerShell y Firewall nativo.
+- 🐧 **[Guía Específica para Linux (linux/README_LINUX.md)](linux/README_LINUX.md)**: Scripts Bash `.sh`, `systemd --user` e inspección de descriptores.
 
 ---
 
@@ -248,6 +256,14 @@ python -m cookieguard killswitch --block     # Bloqueo inmediato de red saliente
 python -m cookieguard killswitch --restore   # Restauración de conectividad de red
 python -m cookieguard snapshot               # Generación de snapshot forense cifrado con AES-GCM
 python -m cookieguard playbook --format html # Generación de guía de revocación offline interactiva
+
+# Novedades v2.4.0: Rescate, Descargas y Trampa Activa
+python -m cookieguard rescue --auto          # Asistente de rescate rápido cero-confianza (alias: rescate)
+python -m cookieguard descargas --hours 48   # Auditoría de descargas recientes sospechosas (alias: downloads)
+python -m cookieguard trap --deploy          # Desplegar trampas señuelo en perfiles de usuario (alias: trampa)
+python -m cookieguard trap --check           # Comprobar si alguna trampa ha sido leída o alterada
+python -m cookieguard trap --watch           # Monitor continuo en bucle de trampas señuelo
+python -m cookieguard trap --cleanup         # Limpiar y retirar archivos de trampa
 ```
 
 *Para ver todas las opciones disponibles en cualquier comando, utiliza el flag `--help` (ejemplo: `python -m cookieguard drill --help`).*
