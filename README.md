@@ -16,19 +16,20 @@
 
 1. [🎮 Demos y Simulaciones en Vivo](#-demos-y-simulaciones-en-vivo)
 2. [🎯 ¿Qué es CookieGuard?](#-qué-es-cookieguard)
-3. [🔒 Principios de Privacidad Zero-Trust](#-principios-de-privacidad-zero-trust)
-4. [🚀 Guía Rápida en 3 Pasos (Para Dummies y Principiantes)](#-guía-rápida-en-3-pasos-para-dummies-y-principiantes)
-5. [🖥️ Manual de la Interfaz Gráfica (GUI) - Explicación Botón por Botón](#️-manual-de-la-interfaz-gráfica-gui---explicación-botón-por-botón)
-6. [📋 Manual del Web Dashboard y Checklist de Revocación](#-manual-del-web-dashboard-y-checklist-de-revocación)
-7. [⌨️ Referencia Completa de Comandos CLI](#️-referencia-completa-de-comandos-cli)
-8. [🚨 Protocolo de Respuesta a Incidentes en 5 Minutos](#-protocolo-de-respuesta-a-incidentes-en-5-minutos)
-9. [🔍 Catálogo Completo de Indicadores Heurísticos (I01 a I19 + MITRE ATT&CK)](#-catálogo-completo-de-indicadores-heurísticos-i01-a-i19--mitre-attck)
-10. [🧰 Modo Rescate USB (Triage Forense sin Huella)](#-modo-rescate-usb-triage-forense-sin-huella)
-11. [🌐 Compatibilidad de Navegadores y Aplicaciones](#-compatibilidad-de-navegadores-y-aplicaciones)
-12. [❓ Preguntas Frecuentes y Resolución de Problemas (FAQ)](#-preguntas-frecuentes-y-resolución-de-problemas-faq)
-13. [🧪 Ejecución de Pruebas Automatizadas](#-ejecución-de-pruebas-automatizadas)
-14. [📂 Estructura del Proyecto](#-estructura-del-proyecto)
-15. [⚖️ Licencia y Descargo de Responsabilidad](#️-licencia-y-descargo-de-responsabilidad)
+3. [🧠 Desglose Exhaustivo: Cada Característica y el Motivo de Seguridad](#-desglose-exhaustivo-cada-característica-y-el-motivo-de-seguridad-por-el-que-existe)
+4. [🔒 Principios de Privacidad Zero-Trust](#-principios-de-privacidad-zero-trust)
+5. [🚀 Guía Rápida en 3 Pasos (Para Dummies y Principiantes)](#-guía-rápida-en-3-pasos-para-dummies-y-principiantes)
+6. [🖥️ Manual de la Interfaz Gráfica (GUI) - Explicación Botón por Botón](#️-manual-de-la-interfaz-gráfica-gui---explicación-botón-por-botón)
+7. [📋 Manual del Web Dashboard y Checklist de Revocación](#-manual-del-web-dashboard-y-checklist-de-revocación)
+8. [⌨️ Referencia Completa de Comandos CLI](#️-referencia-completa-de-comandos-cli)
+9. [🚨 Protocolo de Respuesta a Incidentes en 5 Minutos](#-protocolo-de-respuesta-a-incidentes-en-5-minutos)
+10. [🔍 Catálogo Completo de Indicadores Heurísticos (I01 a I19 + MITRE ATT&CK)](#-catálogo-completo-de-indicadores-heurísticos-i01-a-i19--mitre-attck)
+11. [🧰 Modo Rescate USB (Triage Forense sin Huella)](#-modo-rescate-usb-triage-forense-sin-huella)
+12. [🌐 Compatibilidad de Navegadores y Aplicaciones](#-compatibilidad-de-navegadores-y-aplicaciones)
+13. [❓ Preguntas Frecuentes y Resolución de Problemas (FAQ)](#-preguntas-frecuentes-y-resolución-de-problemas-faq)
+14. [🧪 Ejecución de Pruebas Automatizadas](#-ejecución-de-pruebas-automatizadas)
+15. [📂 Estructura del Proyecto](#-estructura-del-proyecto)
+16. [⚖️ Licencia y Descargo de Responsabilidad](#️-licencia-y-descargo-de-responsabilidad)
 
 ---
 
@@ -54,6 +55,145 @@ Los **infostealers** modernos (como *LummaC2, Stealc, RedLine, Vidar, Meduza, Rh
 3. **Comprueba la persistencia** en el sistema (tareas programadas, scripts de arranque, autostart).
 4. **Verifica la integridad** de binarios, red local (DNS, archivo `hosts`) y extensiones del navegador.
 5. **Facilita la respuesta inmediata** en caso de sospecha: corte de red instantáneo (Killswitch), instantánea forense anonimizada y playbooks con enlaces directos para revocar sesiones activas en más de 35 servicios clave.
+
+---
+
+
+---
+
+## 🧠 Desglose Exhaustivo: Cada Característica y el Motivo de Seguridad por el que Existe
+
+Para entender el valor de CookieGuard, es fundamental conocer **cómo operan los ciberdelincuentes** y cuál es el **fundamento defensivo específico** de cada componente del sistema:
+
+---
+
+### 1. 🍪 Auditoría de Metadatos de Cookies de Sesión (Inventory Engine)
+* **Qué hace:** Inspecciona las bases de datos SQLite locales de todos los navegadores instalados (Chrome, Edge, Firefox, Brave, Opera, Vivaldi), inventariando dominios, nombres de cookie, rutas de almacenamiento, banderas de seguridad (`Secure`, `HttpOnly`, `SameSite`) y fechas de expiración.
+* **El motivo de seguridad (Vector del atacante):** Los infostealers ya no necesitan robar contraseñas maestras ni descifrar hashes. Si clonan una cookie de sesión activa (`session_id`, `SSID`, `authToken`), el atacante puede saltarse instantáneamente el Segundo Factor de Autenticación (2FA / MFA) y suplantar la identidad del usuario en servicios críticos. Saber exactamente qué sesiones estaban abiertas en la máquina es el primer paso indispensable para responder al ataque.
+* **Por qué se diseñó de esta forma:** CookieGuard **rechaza explícitamente leer la columna `encrypted_value`**. NUNCA descifra ni expone el valor de la cookie, impidiendo que la propia herramienta de seguridad pueda ser explotada por un atacante para robar credenciales.
+
+---
+
+### 2. 🚦 Diagnóstico Semafórico 'Modo Dummy' (`dummy` / `resumen`)
+* **Qué hace:** Evalúa de forma holística todo el sistema en segundos y emite un veredicto visual directo: 🟢 **VERDE** (seguro/limpio), 🟡 **AMARILLO** (atención preventiva requerida) o 🔴 **ROJO** (compromiso activo o anomalía crítica), acompañado de los **3 pasos inmediatos a seguir en los primeros 5 minutos**.
+* **El motivo de seguridad:** En situaciones de incidente o sospecha de infección, la sobrecarga de información y el pánico provocan errores graves (como apagar el ordenador sin aislar la red o perder tiempo buscando en menús confusos). Un usuario o técnico de soporte necesita saber en 3 segundos la gravedad de la situación y la prioridad operativa de respuesta.
+* **Por qué se diseñó de esta forma:** Traduce heurísticas complejas (MITRE ATT&CK, llamadas DPAPI, descriptores abiertos) a un formato accesible para cualquier persona, con opción de exportar a HTML autónomo para compartir con el equipo de soporte.
+
+---
+
+### 3. 🕵️ Cazador de Procesos Infostealer (Process Hunter - `procesos`)
+* **Qué hace:** Escanea en tiempo real la lista de procesos activos en memoria, analizando nombres de ejecutables, líneas de comandos completas, argumentos sospechosos y rutas de ejecución.
+* **El motivo de seguridad (Vector del atacante):** Familias de malware como *LummaC2, Stealc, Vidar, RedLine o Meduza* operan mediante ejecutables autónomos o droppers que se ejecutan brevemente en segundo plano para recopilar las bases de datos antes de transmitirlas. Detectar el proceso mientras está activo permite identificar el PID exacto y destruirlo (`kill`) antes de que termine la exfiltración.
+* **Detección de Masquerading (T1036):** Detecta troyanos que intentan camuflarse con nombres legítimos del sistema (por ejemplo, un `svchost.exe` o `csrss.exe` ejecutándose desde `%TEMP%` o la carpeta de descargas en lugar de `System32`).
+
+---
+
+### 4. ⚙️ Auditoría de Persistencia y Tareas Programadas (`persistence`)
+* **Qué hace:** Audita todos los puntos de arranque automático del sistema operativo:
+  * **Windows:** Tareas programadas (`schtasks`), carpeta `Startup` (`Inicio`), scripts de logon y claves de registro Run/RunOnce.
+  * **Linux:** Ficheros `.desktop` en `~/.config/autostart` y entradas de usuario en `crontab`.
+* **El motivo de seguridad (Vector del atacante):** Los stealers modernos ya no son solo de ejecución única; buscan permanecer residentes para volver a extraer credenciales cada vez que el usuario reinicia el equipo o inicia sesión en un nuevo servicio. Si limpias el navegador pero dejas viva la persistencia, el atacante volverá a robarte en el próximo reinicio.
+* **Por qué se diseñó de esta forma:** Aplica heurísticas sobre parámetros ocultos (como PowerShell con `-WindowStyle Hidden` o comandos codificados en Base64 `-enc`) y rutas temporales sospechosas.
+
+---
+
+### 5. 🔏 Verificación de Integridad y Firmas de Binarios (`integrity`)
+* **Qué hace:** Valida la legitimidad física de los ejecutables de los navegadores instalados en el sistema operativo.
+  * **Windows:** Verifica criptográficamente la firma digital Authenticode del ejecutable, exigiendo certificados válidos emitidos por entidades oficiales reconocidas (*Google LLC, Microsoft Corporation, Mozilla Corporation*).
+  * **Linux:** Inspecciona permisos de fichero (alertando ante banderas SUID o SGID anómalas) y verifica que los binarios residan en rutas canónicas seguras (`/usr/bin`, `/opt`, `/snap`, `/nix/store`).
+* **El motivo de seguridad (Vector del atacante):** Ataques avanzados parchean o sustituyen el binario de Chrome o Edge por un ejecutable troyanizado (*Browser Hooking* / *Binary Patching*). Si el ejecutable del navegador está adulterado, cualquier cookie o contraseña que introduzcas será interceptada directamente en memoria antes de ser cifrada.
+
+---
+
+### 6. 🌐 Auditoría de Red Local, Archivo hosts y DNS (`network` / `hosts`)
+* **Qué hace:** Analiza exhaustivamente el archivo `hosts` del sistema (`/etc/hosts` en Linux, `System32\drivers\etc\hosts` en Windows) y los servidores DNS configurados.
+* **El motivo de seguridad (Vector del atacante):**
+  * **Security Sinkholing:** El malware suele redirigir dominios de empresas de ciberseguridad y telemetría de antivirus (`virustotal.com`, `kaspersky.com`, `bitdefender.com`, `microsoft.com`) a `127.0.0.1` o `0.0.0.0`. De este modo, el antivirus no puede descargar firmas actualizadas y el usuario no puede subir muestras sospechosas para analizarlas.
+  * **Auth Spoofing (Phishing local):** Redirección maliciosa de portales de autenticación hacia direcciones IP controladas por atacantes locales.
+
+---
+
+### 7. 📥 Auditoría de Metadatos de Descargas Recientes (`downloads`)
+* **Qué hace:** Consulta en modo estrictamente de solo lectura el historial de descargas de perfiles Chromium (`History`), filtrando por marcas temporales recientes y clasificando archivos según su potencial peligrosidad (`.exe`, `.scr`, `.bat`, `.ps1`, `.iso`, `.zip`).
+* **El motivo de seguridad (Vector del atacante):** Más del 85% de las infecciones por infostealers entran a través de descargas que el propio usuario inicia engañado: falsos instaladores de software desde anuncios de Google Ads maliciosos, cracks de programas, mods de videojuegos o adjuntos de correo electrónico. Conocer qué archivo se descargó antes del incidente permite identificar el origen de la brecha y reportar la URL maliciosa.
+
+---
+
+### 8. 🛡️ Auditoría de Protección App-Bound Encryption (`appbound`)
+* **Qué hace:** Inspecciona el archivo `Local State` de los perfiles Chromium en Windows para verificar la presencia de los marcadores estructurales de *App-Bound Encryption*.
+* **El motivo de seguridad (Vector del atacante):** Google Chrome introdujo App-Bound Encryption para vincular la clave de cifrado de cookies a un servicio privilegiado de Windows, dificultando que un proceso no privilegiado pueda descifrar la base de datos directamente con DPAPI. Sin embargo, los stealers han evolucionado para eludirlo mediante inyección en el proceso del navegador o mediante flags de depuración. Esta auditoría ayuda a evaluar el nivel de blindaje del navegador frente a ataques conocidos.
+
+---
+
+### 9. 🔐 Auditoría de Certificados Raíz y Proxies Locales (`certs`)
+* **Qué hace:** Revisa los almacenes de certificados de confianza del sistema operativo y las configuraciones de red (variables `HTTP_PROXY`, `HTTPS_PROXY` y claves de registro de Windows).
+* **El motivo de seguridad (Vector del atacante):** Ataques del tipo *Adversary-in-the-Middle (MITM, MITRE T1557)* instalan un proxy local silencioso (`127.0.0.1:8080`) acompañado de una Autoridad de Certificación (CA) falsa en el almacén raíz de Windows o Linux. Con esto, el atacante puede descifrar todo el tráfico HTTPS en tiempo real y robar cookies de sesión transparentemente conforme navegas.
+
+---
+
+### 10. 🗄️ Integridad Forense de Bases de Datos SQLite (`db-integrity`)
+* **Qué hace:** Realiza un análisis forense de bajo nivel sobre las bases de datos de cookies: valida la cabecera física (magic bytes `SQLite format 3\000`), ejecuta `PRAGMA quick_check` y calcula el porcentaje de páginas libres (*freelist*). Además, compara las marcas de tiempo de los ficheros auxiliares WAL (*Write-Ahead Log*) y SHM (*Shared Memory*).
+* **El motivo de seguridad (Vector del atacante):** Cuando un infostealer extrae datos, frecuentemente recurre a técnicas de *Time-Stomping* (alteración intencionada de marcas de tiempo del sistema de archivos) para burlar a los analistas forenses, o intenta borrar registros masivamente para no dejar rastro, lo que deja un porcentaje anómalamente alto de páginas libres en la base de datos.
+
+---
+
+### 11. 🧩 Auditor de Permisos y Escáner Heurístico de Extensiones (`extensions` / `scan-extensions`)
+* **Qué hace:** Analiza los manifiestos de todas las extensiones instaladas para auditar permisos invasivos (`<all_urls>`, `cookies`, `webRequest`, `debugger`). Además, su escáner heurístico inspecciona el código fuente JavaScript interno buscando llamadas a webhooks de Discord, bots de Telegram C2 o llamadas a `chrome.cookies.getAll`.
+* **El motivo de seguridad (Vector del atacante):** Las extensiones maliciosas del navegador son el método más sigiloso para robar cookies: no requieren ejecutar archivos `.exe` extraños y los antivirus tradicionales rara vez las inspeccionan. Una vez instalada, una extensión maliciosa puede interceptar cada cookie de sesión generada en cualquier sitio web que visites.
+
+---
+
+### 12. 💼 Auditoría de Sesiones de Apps de Escritorio y Wallets (`desktop-sessions`)
+* **Qué hace:** Inspecciona la presencia y el estado de carpetas de sesión de aplicaciones como **Telegram Desktop** (directorio `tdata`), **Discord**, **Slack**, **Postman** (tokens de API Bearer y variables de entorno), **Notion**, **Obsidian** y billeteras de criptomonedas (**Exodus, Electrum, Atomic Wallet, MetaMask**).
+* **El motivo de seguridad (Vector del atacante):** Los infostealers ya no se limitan a los navegadores web. Si un stealer roba la carpeta `tdata` de Telegram, el atacante clona tu cuenta de mensajería al instante sin necesidad de código SMS. Si roba los ficheros de Postman, obtiene las claves de acceso a los servidores de producción de tu empresa.
+
+---
+
+### 13. 🛑 Killswitch de Aislamiento de Red Inmediato (`killswitch`)
+* **Qué hace:** Invoca las utilidades nativas de filtrado de paquetes del sistema operativo (Firewall de Windows mediante `netsh advfirewall` o `iptables`/`nmcli` en Linux) para cortar instantáneamente todo el tráfico saliente hacia Internet, manteniendo la conectividad de bucle local (`localhost`).
+* **El motivo de seguridad (Contención de emergencia):** El ciclo de vida de un infostealer consta de tres fases: Infección -> Recopilación local -> Exfiltración hacia el servidor C2. Si aíslas la red durante los primeros minutos del incidente, el stealer no podrá enviar los datos recopilados, neutralizando el ataque en seco.
+
+---
+
+### 14. 🐤 Canary Cookies Señuelo Activas (`canary`)
+* **Qué hace:** Siembra cookies ficticias con nombres muy atractivos para un atacante (`corp_vault_session`, `admin_sso_token`) en las bases de datos locales y vigila si sufren modificaciones, borrado o lecturas no autorizadas.
+* **El motivo de seguridad (Alerta con 0% de falsos positivos):** Un usuario normal jamás interactúa con una cookie inventada en un dominio señuelo. Si esa cookie es manipulada o leída por un proceso ajeno al navegador, representa un indicio inequívoco de que un software automatizado está recorriendo la base de datos para robarla.
+
+---
+
+### 15. 🍯 Perfiles de Navegador Trampa (Honeypot - `honeypot`)
+* **Qué hace:** Despliega una estructura señuelo simulando un perfil completo de navegador Chromium en ubicaciones estándar donde los stealers buscan habitualmente.
+* **El motivo de seguridad (Detección temprana):** La inmensa mayoría de infostealers recorren rutas fijas por defecto. Si un proceso desconocido abre o intenta copiar los archivos de este perfil señuelo, el vigilante de CookieGuard dispara la alarma de intrusión antes de que el malware llegue a comprometer los perfiles reales del usuario.
+
+---
+
+### 16. 💉 Detección de Inyección de Memoria y DLL Hooking (`memory-audit`)
+* **Qué hace:** Audita los módulos y librerías dinámicas (`DLL` en Windows / bibliotecas compartidas `.so` en Linux) cargados en el espacio de memoria de los procesos activos del navegador.
+* **El motivo de seguridad (Vector del atacante):** Herramientas avanzadas de robo inyectan código malicioso directamente en `chrome.exe` o `firefox.exe` para capturar cookies y credenciales en texto plano antes de que el navegador las almacene o cifre. CookieGuard alerta ante módulos no firmados o cargados desde directorios temporales (`%TEMP%`, `/tmp`).
+
+---
+
+### 17. 📦 Instantánea Forense Volátil Anonimizada (`snapshot` y `snapshot-descifrar`)
+* **Qué hace:** Captura de forma estructurada en un archivo ZIP (con opción de cifrado autenticado AES-256-GCM) el estado de procesos, conexiones de red, metadatos de perfiles y registros de eventos, anonimizando de forma automática nombres de usuario, nombres de host y correos electrónicos.
+* **El motivo de seguridad:** En cuanto se reinicia o se pasa un antivirus, las evidencias volátiles del malware (procesos en ejecución, conexiones de red abiertas, ficheros temporales) se borran irremediablemente. Guardar una instantánea forense inmediata permite investigar a fondo la intrusión con posterioridad o entregarla a peritos judiciales y equipos de respuesta a incidentes (DFIR).
+
+---
+
+### 18. 📊 Generador de Dossier MITRE ATT&CK y STIX 2.1 (`dossier` / `stix`)
+* **Qué hace:** Transforma todos los hallazgos técnicos recopilados en un informe formal de respuesta a incidentes correlacionado con las tácticas y técnicas de la matriz internacional MITRE ATT&CK, y genera paquetes de inteligencia en formato estándar OASIS STIX 2.1.
+* **El motivo de seguridad:** Permite a administradores de sistemas y analistas de Centros de Operaciones de Seguridad (SOC) integrar automáticamente los datos del incidente en plataformas como Wazuh, Splunk, MISP u OpenCTI para proteger al resto de la organización.
+
+---
+
+### 19. 📋 Playbooks Interactivos y Checklist de Revocación (`playbook`)
+* **Qué hace:** Genera guías interactivas en HTML y Markdown con enlaces directos para **cerrar sesiones activas en todos los dispositivos**, cambiar contraseñas y auditar permisos de aplicaciones OAuth en más de 35 servicios clave (Google, Microsoft 365, AWS, GitHub, Slack, Binance, Stripe, etc.).
+* **El motivo de seguridad (La verdad sobre la revocación de cookies):** Borrar una cookie de tu ordenador o cambiar la contraseña local NO cierra la sesión si el atacante ya tiene la cookie en su poder. La única forma efectiva de invalidar una cookie robada es acceder a la infraestructura del proveedor y pulsar *"Cerrar sesión en todos los demás dispositivos"*, lo que destruye el token en los servidores centrales del servicio.
+
+---
+
+### 20. 🔔 Vigilante en Segundo Plano y Notificaciones Nativas (`service` / `watcher`)
+* **Qué hace:** Se ejecuta como servicio de usuario de bajo impacto (Tarea Programada en Windows o demonio `systemd` en Linux), comprobando periódicamente el acceso a los archivos y lanzando notificaciones nativas de escritorio (Toasts de Windows o alertas D-Bus `notify-send` en Linux).
+* **El motivo de seguridad:** Un usuario no puede estar ejecutando análisis manuales de forma continua. La vigilancia automatizada garantiza que, en el instante exacto en que un proceso extraño intente tocar tus perfiles de navegador, recibirás un aviso emergente en pantalla con un botón directo para abrir el panel de contención.
 
 ---
 
