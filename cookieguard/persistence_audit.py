@@ -50,6 +50,8 @@ def analyze_command_heuristics(cmd: str, location_hint: str = "") -> List[Dict[s
 def audit_linux_autostart(base_dir: Optional[str] = None) -> List[Dict[str, Any]]:
     """Audita archivos .desktop en ~/.config/autostart o directorio especificado."""
     findings = []
+    if sys.platform.startswith("win") and not base_dir:
+        return findings
     autostart_dir = Path(base_dir) if base_dir else Path.home() / ".config" / "autostart"
     if not autostart_dir.is_dir():
         return findings
@@ -88,7 +90,7 @@ def audit_linux_autostart(base_dir: Optional[str] = None) -> List[Dict[str, Any]
 def audit_linux_systemd_user(base_dir: Optional[str] = None) -> List[Dict[str, Any]]:
     """Audita servicios o timers de usuario en ~/.config/systemd/user."""
     findings = []
-    if sys.platform.startswith("win"):
+    if sys.platform.startswith("win") and not base_dir:
         return findings
 
     d = Path(base_dir) if base_dir else Path.home() / ".config" / "systemd" / "user"
