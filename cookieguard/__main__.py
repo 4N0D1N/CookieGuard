@@ -170,14 +170,17 @@ def main(argv=None):
 
     per = sub.add_parser("persistence", help="Auditoría de persistencia y tareas programadas (schtasks, autostart, cron)")
     per.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("persistencia", help="Alias de 'persistence'").add_argument("--json", action="store_true", help="Salida en formato JSON")
 
     integ = sub.add_parser("integrity", help="Verifica firmas e integridad de binarios de navegadores instalados")
     integ.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("integridad", help="Alias de 'integrity'").add_argument("--json", action="store_true", help="Salida en formato JSON")
 
     netw = sub.add_parser("network", help="Audita archivo hosts local (sinkholing/spoofing) y DNS")
     netw.add_argument("--json", action="store_true", help="Salida en formato JSON")
 
     sub.add_parser("hosts", help="Alias de 'network': audita archivo hosts local")
+    sub.add_parser("red", help="Alias de 'network': audita red, hosts y DNS").add_argument("--json", action="store_true", help="Salida en formato JSON")
 
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
@@ -639,7 +642,7 @@ def main(argv=None):
                 print("[+] Informe HTML generado con éxito en: " + str(html_path))
         return 0
 
-    elif args.cmd == "persistence":
+    elif args.cmd in ("persistence", "persistencia"):
         from . import persistence_audit
         res = persistence_audit.run_persistence_audit()
         if getattr(args, "json", False):
@@ -657,7 +660,7 @@ def main(argv=None):
                 print("  [OK] No se detectaron entradas de persistencia ni tareas sospechosas.")
         return 0 if not res["has_alerts"] else 1
 
-    elif args.cmd == "integrity":
+    elif args.cmd in ("integrity", "integridad"):
         from . import binary_integrity
         res = binary_integrity.audit_binary_integrity()
         if getattr(args, "json", False):
@@ -679,7 +682,7 @@ def main(argv=None):
                 print("[OK] Todos los ejecutables auditados tienen integridad y firmas válidas.")
         return 0 if not res["has_tampered_risk"] else 1
 
-    elif args.cmd in ("network", "hosts"):
+    elif args.cmd in ("network", "hosts", "red"):
         from . import network_audit
         res = network_audit.run_network_audit()
         if getattr(args, "json", False):

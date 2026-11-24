@@ -207,7 +207,17 @@ La interfaz gráfica (`python -m cookieguard.gui`) ofrece una consola de control
 | **✅ Marcar Revisado** | Registra localmente que una sesión o alerta ha sido verificada y mitigada por el usuario. | Evita la fatiga de alertas y mantiene un control riguroso de qué cuentas faltan por sanear. |
 | **📦 Generar Snapshot de Incidente** | Crea un archivo ZIP comprimido con metadatos del incidente, hashes, procesos activos y registros forenses (con cifrado AES-GCM opcional). | Preserva la evidencia inmutable para análisis forense posterior o reporte corporativo sin filtrar datos sensibles. |
 | **♻️ Restaurar Estado** | Restablece las reglas de firewall y configuraciones previas aplicadas durante una contención de emergencia. | Permite reanudar la actividad normal de forma segura una vez el incidente ha sido resuelto. |
-| **⚙️ Ajustes de Hardening** | Aplica medidas preventivas locales (como habilitar auditoría de procesos o configurar límites de retención de cookies). | Reduce la superficie de ataque del sistema frente a futuras infecciones. |
+| **⚙️ Ajustes de Hardening** | Aplica medidas preventivas locales (auditoría de Defender, LSA Protection RunAsPPL en Windows, sysctl ptrace_scope y fs.protected_regular en Linux). | Reduce la superficie de ataque del sistema frente a volcados de LSASS o infecciones en directorios temporales. |
+| **🧰 Pestaña: Herramientas** | Panel integrado en la GUI que reúne en 1 clic los módulos avanzados de auditoría, respuesta e incidentes. | Centraliza el acceso visual a las funciones forenses sin necesidad de abrir la terminal. |
+| **🚦 Semáforo de Estado** | Diagnóstico ejecutivo inmediato con cálculo de severidad y 3 acciones urgentes guiadas. | Ofrece respuesta guiada a usuarios no técnicos en situaciones de estrés por incidente. |
+| **📋 Auditar Portapapeles (Clipper)** | Inspecciona el portapapeles local en busca de tokens JWT expuestos, credenciales y criptodirecciones. | Detecta troyanos Clipper (MITRE T1115) antes de pegar direcciones financieras o credenciales. |
+| **🧹 Purgar Portapapeles** | Vacía instantáneamente la memoria del portapapeles en Windows y Linux. | Evita que malware en segundo plano capture secretos copiados temporalmente. |
+| **⏰ Auditar Persistencia** | Analiza claves Registry Run/RunOnce, tareas `schtasks`, systemd user units y autostart XDG. | Detecta mecanismos de arraigo de infostealers que sobreviven al reinicio del sistema. |
+| **🌐 Auditar Hosts y DNS** | Comprueba redirecciones maliciosas en `hosts` y servidores DNS activos (`netsh`/resolv.conf). | Previene ataques de sinkholing y suplantación de portales de autenticación legítimos. |
+| **🔏 Integridad de Binarios** | Valida firmas digitales Authenticode en Windows y permisos/rutas de sistema en Linux. | Detecta DLL hijacking, binarios suplantados o wrappers maliciosos en navegadores. |
+| **🎯 Ejecutar Simulacro (Drill)** | Despliega un sandbox temporal con perfiles señuelo y prueba la cadena de detección y contención. | Permite ensayar la respuesta a incidentes de forma 100% segura y controlada. |
+| **📄 Generar Dossier MITRE** | Genera un informe forense formal HTML/PDF-ready alineado con las matrices de MITRE ATT&CK. | Documenta técnicamente el incidente para auditorías, seguros cibernéticos o equipos SOC. |
+| **📖 Playbook de Revocación** | Abre la checklist interactiva de revocación con enlaces oficiales directos para más de 35 servicios. | Agiliza la invalidación de sesiones y tokens OAuth en minutos tras una exfiltración. |
 
 </details>
 
@@ -218,33 +228,47 @@ La interfaz gráfica (`python -m cookieguard.gui`) ofrece una consola de control
 CookieGuard incluye una potente interfaz de línea de comandos para administradores, entornos headless y auditorías automatizadas:
 
 ```bash
-# Diagnóstico y Análisis
-python -m cookieguard dummy                  # Resumen semafórico ejecutivo en 3 pasos
-python -m cookieguard scan                   # Escaneo forense de sesiones de navegador
-python -m cookieguard watch                  # Monitorización continua en segundo plano
+# Diagnóstico y Análisis (Soporte comandos en Español e Inglés)
+python -m cookieguard resumen                # Resumen semafórico ejecutivo en 3 pasos (alias: dummy)
+python -m cookieguard analizar               # Escaneo forense de sesiones de navegador (alias: scan)
+python -m cookieguard vigilar                # Monitorización continua en segundo plano (alias: watch)
+python -m cookieguard gui                    # Apertura de la consola gráfica interactiva
 
 # Caza, Portapapeles y Persistencia
-python -m cookieguard process-hunter         # Escaneo de procesos sospechosos e inyecciones
-python -m cookieguard clipboard              # Auditoría de portapapeles y clipper malware
-python -m cookieguard clipboard --limpiar    # Purga inmediata del contenido del portapapeles
-python -m cookieguard persistence            # Auditoría de tareas programadas y autostart
-python -m cookieguard integrity              # Verificación de firmas y permisos de navegadores
-
-# Red y Configuración
-python -m cookieguard network                # Detección de sinkholing en archivo hosts y DNS
-python -m cookieguard certs                  # Detección de certificados CA MITM y proxies locales
-python -m cookieguard scan-extensions        # Escaneo heurístico de scripts de extensiones
+python -m cookieguard clipper                # Auditoría de portapapeles y clipper malware (alias: clipboard)
+python -m cookieguard clipper --limpiar      # Purga inmediata del contenido del portapapeles
+python -m cookieguard persistencia           # Auditoría de tareas, Registro y autostart (alias: persistence)
+python -m cookieguard integridad             # Verificación de firmas e integridad de binarios (alias: integrity)
+python -m cookieguard red                    # Detección de sinkholing en archivo hosts y DNS (alias: network, hosts)
 
 # Entrenamiento, Reportes y Contención
-python -m cookieguard drill                  # Simulacro de incidente en vivo (entrenamiento seguro)
-python -m cookieguard report --formato html  # Generación de informe ejecutivo forense (PDF-Ready)
+python -m cookieguard simulacro              # Simulacro de incidente en vivo (alias: drill)
+python -m cookieguard informe --formato html # Generación de informe forense MITRE ATT&CK (alias: report, dossier)
 python -m cookieguard killswitch --block     # Bloqueo inmediato de red saliente
 python -m cookieguard killswitch --restore   # Restauración de conectividad de red
-python -m cookieguard snapshot --output /ruta # Generación de snapshot forense
-python -m cookieguard playbook --format html # Generación de guía de revocación offline
+python -m cookieguard snapshot               # Generación de snapshot forense cifrado con AES-GCM
+python -m cookieguard playbook --format html # Generación de guía de revocación offline interactiva
 ```
 
 *Para ver todas las opciones disponibles en cualquier comando, utiliza el flag `--help` (ejemplo: `python -m cookieguard drill --help`).*
+
+</details>
+
+<details>
+<summary>🪟🐧 <b>Paridad y Compatibilidad Multiplataforma (Windows y Linux)</b></summary>
+<br>
+
+CookieGuard implementa una arquitectura modular que garantiza paridad funcional entre entornos Windows y Linux, utilizando en cada uno los mecanismos nativos óptimos del sistema operativo sin dependencias externas:
+
+| Área Funcional | Implementación en Windows | Implementación en Linux |
+| :--- | :--- | :--- |
+| **Auditoría de Persistencia** | Inspección de claves del Registro `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` y `RunOnce`, `HKLM`, tareas de `schtasks /query` y carpeta `Startup`. | Inspección de unidades de usuario `systemd --user` (`~/.config/systemd/user/`), entradas autostart de escritorio (`~/.config/autostart`, `/etc/xdg/autostart`) y tareas `crontab -l`. |
+| **Auditoría de Red y DNS** | Análisis del archivo `%SystemRoot%\System32\drivers\etc\hosts` y resolución de servidores DNS activos vía `netsh interface ipv4 show dnsservers` con fallback a PowerShell. | Análisis del archivo `/etc/hosts` y extracción de servidores DNS configurados en `/etc/resolv.conf`. |
+| **Portapapeles y Clipper** | Lectura y vaciado de portapapeles mediante llamadas directas Win32 API (`ctypes.windll.user32` `OpenClipboard`/`EmptyClipboard`) con fallback a `powershell Get-Clipboard` / `Set-Clipboard`. | Lectura y vaciado mediante herramientas estándar de entorno gráfico Wayland/X11 (`wl-paste`/`wl-copy`, `xclip`, `xsel`). En terminales headless o sin display, degrada de forma segura sin excepciones. |
+| **Integridad de Binarios** | Validación de firmas digitales Authenticode mediante `Get-AuthenticodeSignature` en PowerShell, contrastando firmantes legítimos (*Google LLC, Microsoft Corporation, Mozilla Corporation*). | Inspección de permisos de archivo, comprobación de rutas canónicas de sistema (`/usr/bin`, `/bin`, `/opt`), y detección de flags o permisos SUID anómalos. |
+| **Hardening y Protección del Núcleo** | Comprobación de estado de Windows Defender (Protección en tiempo real, Tamper Protection, PUA), reglas ASR y auditoría de **LSA Protection (`RunAsPPL`)** para prevenir volcados de LSASS en memoria. | Inspección de variables del kernel en `/proc/sys`: `kernel.yama.ptrace_scope` (evita inyecciones de memoria entre procesos), `fs.protected_regular` y `fs.protected_fifos` (bloquea escrituras no autorizadas en `/tmp`). |
+| **Aislamiento de Emergencia (Killswitch)** | Modificación de reglas del Firewall de Windows mediante `netsh advfirewall firewall` bloqueando tráfico saliente hacia direcciones públicas con exclusión de loopback local. | Aislamiento a través de `iptables` / `ip6tables` cerrando interfaces externas o desactivación de interfaces con `nmcli networking off`. |
+| **Notificaciones en Escritorio** | Notificaciones nativas interactivas en Windows mediante PowerShell Toast / Balloon notifications con botones de respuesta rápida. | Notificaciones D-Bus mediante `notify-send --action` o apertura de URL con `xdg-open`. |
 
 </details>
 

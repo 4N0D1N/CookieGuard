@@ -67,7 +67,7 @@ class App(tk.Tk):
         self.nb = ttk.Notebook(self)
         self.nb.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         self.tabs = {}
-        for n in ("Resumen", "Sesiones activas", "Indicadores", "Extensiones", "Acciones / Rotacion", "Historial",
+        for n in ("Resumen", "Sesiones activas", "Indicadores", "Extensiones", "Acciones / Rotacion", "Herramientas", "Historial",
                   "Ajustes", "Ayuda"):
             f = ttk.Frame(self.nb)
             self.nb.add(f, text=n)
@@ -77,6 +77,7 @@ class App(tk.Tk):
         self._tab_indicadores()
         self._tab_extensiones()
         self._tab_acciones()
+        self._tab_herramientas()
         self._tab_historial()
         self._tab_ajustes()
         self._tab_ayuda()
@@ -276,6 +277,214 @@ class App(tk.Tk):
         ttk.Button(b, text="Restaurar la seleccionada", command=self.restaurar).pack(anchor="w", padx=8)
 
     # ---------------------------------------------------------------- Historial / Ajustes / Ayuda
+    def _tab_herramientas(self):
+        f = self.tabs["Herramientas"]
+        top_lbl = ttk.Label(f, text="Herramientas Avanzadas de Auditoria, Deteccion y Respuesta a Incidentes", font=("Segoe UI", 11, "bold"))
+        top_lbl.pack(anchor="w", padx=10, pady=(10, 4))
+        sub_lbl = ttk.Label(f, text="Ejecuta modulos de analisis en tiempo real (100% offline, compatibles con Windows y Linux).", foreground="#555")
+        sub_lbl.pack(anchor="w", padx=10, pady=(0, 8))
+
+        btn_grid = ttk.Frame(f)
+        btn_grid.pack(fill="x", padx=10, pady=4)
+
+        # Fila 1: Resumen y Portapapeles
+        ttk.Button(btn_grid, text="Semaforo de Estado (Dummy)", command=self._tool_dummy).grid(row=0, column=0, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Auditar Portapapeles (Clipper)", command=self._tool_clipboard).grid(row=0, column=1, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Purgar Portapapeles Seguro", command=self._tool_clear_clipboard).grid(row=0, column=2, padx=4, pady=3, sticky="ew")
+
+        # Fila 2: Persistencia, Red e Integridad
+        ttk.Button(btn_grid, text="Auditar Persistencia (Registro / Tareas)", command=self._tool_persistence).grid(row=1, column=0, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Auditar Archivo Hosts y DNS", command=self._tool_network).grid(row=1, column=1, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Integridad de Binarios de Navegador", command=self._tool_integrity).grid(row=1, column=2, padx=4, pady=3, sticky="ew")
+
+        # Fila 3: Simulacro, Dossier MITRE y Playbook
+        ttk.Button(btn_grid, text="Ejecutar Simulacro (Drill Seguro)", command=self._tool_drill).grid(row=2, column=0, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Generar Dossier MITRE (HTML)", command=self._tool_dossier).grid(row=2, column=1, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Abrir Playbook de Revocacion", command=self._tool_playbook).grid(row=2, column=2, padx=4, pady=3, sticky="ew")
+
+        btn_grid.columnconfigure(0, weight=1)
+        btn_grid.columnconfigure(1, weight=1)
+        btn_grid.columnconfigure(2, weight=1)
+
+        out_frame = ttk.LabelFrame(f, text="Resultado de la Herramienta Seleccionada")
+        out_frame.pack(fill="both", expand=True, padx=10, pady=(8, 10))
+
+        self.txt_herramientas = tk.Text(out_frame, wrap="word", font=("Consolas", 9))
+        self.txt_herramientas.pack(side="left", fill="both", expand=True, padx=4, pady=4)
+        scrl = ttk.Scrollbar(out_frame, command=self.txt_herramientas.yview)
+        scrl.pack(side="right", fill="y")
+        self.txt_herramientas.config(yscrollcommand=scrl.set)
+        self._set_tool_text("Selecciona una herramienta superior para ejecutarla y visualizar aqui sus resultados detallados.")
+
+    def _set_tool_text(self, text: str):
+        self.txt_herramientas.config(state="normal")
+        self.txt_herramientas.delete("1.0", "end")
+        self.txt_herramientas.insert("1.0", text)
+        self.txt_herramientas.config(state="disabled")
+
+    def _tool_dummy(self):
+        from . import dummy_summary
+        crit_count = sum(1 for g in (self.res.get("grupos", []) if self.res else []) if g.get("critico"))
+        has_crit = bool(self.res and self.res.get("veredicto", {}).get("nombre") == "rojo")
+        sum_data = dummy_summary.compute_traffic_light(
+            has_critical_detections=has_crit,
+            active_critical_sessions=crit_count,
+            has_persistence_alerts=False,
+            has_hosts_hijack=False
+        )
+        cli_view = dummy_summary.format_dummy_summary_cli(sum_data)
+        self._set_tool_text(cli_view)
+
+    def _tool_clipboard(self):
+        from . import clipboard_audit
+        res = clipboard_audit.audit_clipboard()
+        lines = [
+            "=" * 60,
+            "AUDITORIA DE PORTAPAPELES (MITRE ATT&CK T1115 - CLIPPER MALWARE)",
+            "=" * 60,
+            "Accesible: " + ("Si" if res.get("accesible") else "No / Vacio"),
+            "Total de alertas: " + str(res.get("total_alertas", 0)),
+            "Alerta critica: " + ("SI" if res.get("has_critical") else "No"),
+            "Recomendacion: " + str(res.get("recomendacion", "-")),
+            ""
+        ]
+        if res.get("alertas"):
+            lines.append("HALLAZGOS REGISTRADOS:")
+            for a in res["alertas"]:
+                lines.append("  * [" + str(a.get("severidad")) + "] " + str(a.get("tipo")) + ": " + str(a.get("descripcion")))
+        if res.get("cripto_detectadas"):
+            lines.append("")
+            lines.append("DIRECCIONES CRIPTO DETECTADAS (Objetivos potenciales de suplantacion):")
+            for c in res["cripto_detectadas"]:
+                lines.append("  * " + str(c.get("moneda")) + ": " + str(c.get("direccion_anonimizada")))
+        self._set_tool_text("\n".join(lines))
+
+    def _tool_clear_clipboard(self):
+        from . import clipboard_audit
+        ok = clipboard_audit.clear_system_clipboard()
+        if ok:
+            msg = "PORTAPAPELES PURGADO EXITOSAMENTE.\nEl contenido previo ha sido borrado de la memoria volatil del sistema para impedir su exfiltracion."
+            self._set_tool_text(msg)
+            messagebox.showinfo("CookieGuard", "El portapapeles ha sido vaciado correctamente.")
+        else:
+            self._set_tool_text("Aviso: No se pudo purgar el portapapeles automaticamente (herramienta no disponible o sin sesion grafica).")
+
+    def _tool_persistence(self):
+        from . import persistence_audit
+        res = persistence_audit.run_persistence_audit()
+        lines = [
+            "=" * 60,
+            "AUDITORIA DE PERSISTENCIA Y TAREAS PROGRAMADAS",
+            "=" * 60,
+            "Plataforma: " + str(res.get("plataforma")),
+            "Total de entradas analizadas: " + str(res.get("total_audited")),
+            "Entradas sospechosas: " + str(res.get("suspicious_count")),
+            ""
+        ]
+        if res.get("suspicious_items"):
+            lines.append("ALERTAS DETECTADAS:")
+            for item in res["suspicious_items"]:
+                lines.append("  * Tipo: " + str(item.get("tipo")))
+                lines.append("    Comando: " + str(item.get("comando")))
+                for alt in item.get("alertas", []):
+                    lines.append("    -> [" + str(alt.get("severidad")) + "] " + str(alt.get("descripcion")))
+                lines.append("")
+        else:
+            lines.append("Estado: Limpio. No se detectaron comandos de persistencia anomalos o de evasion conocidos.")
+        self._set_tool_text("\n".join(lines))
+
+    def _tool_network(self):
+        from . import network_audit
+        res = network_audit.run_network_audit()
+        dns_nameservers = res.get("dns_info", {}).get("nameservers", [])
+        lines = [
+            "=" * 60,
+            "AUDITORIA DE RED LOCAL, ARCHIVO HOSTS Y RESOLUCION DNS",
+            "=" * 60,
+            "Ruta analizada: " + str(res.get("hosts_path")),
+            "Total de entradas hosts: " + str(res.get("total_hosts_entries")),
+            "Anomalias detectadas: " + str(res.get("anomalies_count")),
+            "Servidores DNS activos: " + (", ".join(dns_nameservers) if dns_nameservers else "Por defecto"),
+            ""
+        ]
+        if res.get("anomalies"):
+            lines.append("ALERTAS ENCONTRADAS:")
+            for a in res["anomalies"]:
+                lines.append("  * [" + str(a.get("severidad")) + "] Linea " + str(a.get("linea")) + ": " + str(a.get("dominio")) + " -> " + str(a.get("ip")))
+                lines.append("    Detalle: " + str(a.get("detalle")))
+        else:
+            lines.append("Estado: Limpio. El archivo hosts no contiene redirecciones de seguridad ni secuestro de portales de autenticacion.")
+        self._set_tool_text("\n".join(lines))
+
+    def _tool_integrity(self):
+        from . import binary_integrity
+        res = binary_integrity.audit_binary_integrity()
+        lines = [
+            "=" * 60,
+            "VERIFICACION DE INTEGRIDAD Y FIRMAS DE BINARIOS DE NAVEGADORES",
+            "=" * 60,
+            "Navegadores auditados: " + str(res.get("total_audited")),
+            "Binarios en riesgo/alterados: " + str(res.get("tampered_count")),
+            ""
+        ]
+        for b in res.get("results", []):
+            lines.append("* Navegador: " + str(b.get("browser")))
+            lines.append("  Ruta: " + str(b.get("path")))
+            v = b.get("verification", {})
+            lines.append("  Estado de firma/integridad: " + str(v.get("status", "DESCONOCIDO")))
+            if v.get("subject"):
+                lines.append("  Firmante: " + str(v.get("subject")))
+            lines.append("  Riesgo de alteracion: " + ("SI (ALERTA)" if b.get("is_tampered_risk") else "No (Valido)"))
+            lines.append("")
+        self._set_tool_text("\n".join(lines))
+
+    def _tool_drill(self):
+        from . import simulator
+        if not messagebox.askyesno("CookieGuard", "¿Deseas ejecutar un simulacro de incidente seguro?\nSe creara un entorno temporal aislado con cookies senuelo para probar la contencion y generar un reporte."):
+            return
+        res = simulator.run_incident_drill(interactive=False)
+        lines = [
+            "=" * 60,
+            "SIMULACRO DE INCIDENTE COMPLETADO CON EXITO",
+            "=" * 60,
+            "Familia simulada: " + str(res.get("familia_stealer_simulada")),
+            "Estado del semaforo: " + str(res.get("estado_semaforo")),
+            "Listo para contencion: " + ("Si" if res.get("listo_para_contencion") else "No"),
+            "",
+            "Pasos ejecutados en sandbox:"
+        ]
+        for p in res.get("pasos_completados", []):
+            lines.append("  * " + str(p.get("nombre")) + ": " + str(p.get("detalle")))
+        lines.append("")
+        lines.append("Reporte generado: " + str(res.get("reporte_html")))
+        self._set_tool_text("\n".join(lines))
+        if res.get("reporte_html"):
+            try:
+                webbrowser.open(Path(res["reporte_html"]).as_uri())
+            except Exception:
+                pass
+
+    def _tool_dossier(self):
+        from . import incident_report
+        if not self.res:
+            messagebox.showwarning("CookieGuard", "Ejecuta primero un analisis antes de generar el dossier.")
+            return
+        p_html = incident_report.generate_incident_dossier(self.res, formato="html")
+        self._set_tool_text("Dossier formal de incidente MITRE ATT&CK generado con exito:\n\nArchivo HTML: " + str(p_html) + "\nSe ha abierto en tu navegador para visualizacion o impresion/guardar como PDF.")
+        try:
+            webbrowser.open(Path(p_html).as_uri())
+        except Exception:
+            pass
+
+    def _tool_playbook(self):
+        from . import playbooks
+        p_html = playbooks.generate_playbook_html()
+        self._set_tool_text("Playbook interactivo de respuesta rapida generado con exito:\n\nArchivo HTML: " + str(p_html) + "\nIncluye la checklist y guias de revocacion de sesiones para mas de 35 servicios.")
+        try:
+            webbrowser.open(Path(p_html).as_uri())
+        except Exception:
+            pass
+
     def _tab_historial(self):
         fr, self.t_his = self._tree(self.tabs["Historial"], [("fecha", "Fecha", 160), ("nivel", "Semaforo", 90),
                                                               ("puntos", "Puntos", 70), ("sesiones", "Sesiones", 80),

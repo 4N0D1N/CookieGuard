@@ -4,7 +4,8 @@ CookieGuard - Auditoría Heurística de Persistencia y Tareas Programadas.
 Inspecciona mecanismos comunes de persistencia utilizados por infostealers (RedLine,
 Lumma, Stealc, Vidar) en Windows y Linux:
 - Tareas programadas (schtasks / System32\Tasks / cron)
-- Claves de ejecución de inicio (Registry Run / ~/.config/autostart)
+- Claves de ejecución de inicio (Registry Run / ~/.config/autostart / /etc/xdg/autostart)
+- Servicios y timers de usuario (systemd user units en Linux)
 - Scripts y ejecutables residiendo en directorios temporales (%TEMP%, /tmp, /dev/shm)
 """
 
@@ -34,7 +35,6 @@ def analyze_command_heuristics(cmd: str, location_hint: str = "") -> List[Dict[s
     if not cmd:
         return alerts
 
-    cmd_lower = cmd.lower()
     for pattern, desc in SUSPICIOUS_PATTERNS:
         if re.search(pattern, cmd, re.IGNORECASE):
             alerts.append({
@@ -42,7 +42,7 @@ def analyze_command_heuristics(cmd: str, location_hint: str = "") -> List[Dict[s
                 "descripcion": desc,
                 "comando": cmd.strip(),
                 "origen": location_hint,
-                "severidad": "CRITICAL" if "hidden" in pattern or "Temp" in pattern or "/tmp/" in pattern else "WARNING"
+                "severidad": "CRITICAL" if ("hidden" in pattern or "Temp" in pattern or "/tmp/" in pattern) else "WARNING"
             })
     return alerts
 
@@ -82,6 +82,45 @@ def audit_linux_autostart(base_dir: Optional[str] = None) -> List[Dict[str, Any]
     except Exception:
         pass
 
+    return findings
+
+
+def audit_linux_systemd_user(base_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Audita servicios o timers de usuario en ~/.config/systemd/user."""
+    findings = []
+    if sys.platform.startswith("win"):
+        return findings
+
+    d = Path(base_dir) if base_dir else Path.home() / ".config" / "systemd" / "user"
+    if not d.is_dir():
+        return findings
+
+    try:
+        for item in d.glob("*.service"):
+            try:
+                content = item.read_text(encoding="utf-8", errors="ignore")
+                exec_line = ""
+                for line in content.splitlines():
+                    if line.startswith("ExecStart="):
+                        exec_line = line[10:].strip()
+                        break
+                alerts = analyze_command_heuristics(exec_line, location_hint=str(item))
+                findings.append({
+                    "tipo": "linux_systemd_user",
+                    "archivo": str(item),
+                    "nombre": item.name,
+                    "comando": exec_line,
+                    "sospechoso": len(alerts) > 0,
+                    "alertas": alerts
+                })
+            except Exception as e:
+                findings.append({
+                    "tipo": "linux_systemd_user",
+                    "archivo": str(item),
+                    "error": str(e)
+                })
+    except Exception:
+        pass
     return findings
 
 
@@ -150,6 +189,49 @@ def audit_windows_startup_folders(base_path: Optional[str] = None) -> List[Dict[
     return findings
 
 
+def audit_windows_registry_run() -> List[Dict[str, Any]]:
+    """Audita claves de registro Run y RunOnce en HKCU y HKLM en Windows."""
+    findings = []
+    if not sys.platform.startswith("win"):
+        return findings
+
+    try:
+        import winreg
+
+        targets = [
+            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", "HKCU_Run"),
+            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce", "HKCU_RunOnce"),
+            (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Run", "HKLM_Run"),
+            (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\RunOnce", "HKLM_RunOnce"),
+        ]
+
+        for root_key, subkey, key_label in targets:
+            try:
+                with winreg.OpenKey(root_key, subkey, 0, winreg.KEY_READ) as k:
+                    idx = 0
+                    while True:
+                        try:
+                            val_name, val_data, _ = winreg.EnumValue(k, idx)
+                            cmd = str(val_data)
+                            alerts = analyze_command_heuristics(cmd, location_hint=f"{key_label}: {val_name}")
+                            findings.append({
+                                "tipo": "windows_registry_run",
+                                "clave": key_label,
+                                "nombre": val_name,
+                                "comando": cmd,
+                                "sospechoso": len(alerts) > 0,
+                                "alertas": alerts
+                            })
+                            idx += 1
+                        except OSError:
+                            break
+            except (FileNotFoundError, PermissionError, OSError):
+                continue
+    except Exception:
+        pass
+    return findings
+
+
 def audit_windows_schtasks() -> List[Dict[str, Any]]:
     """Audita tareas programadas vía 'schtasks /query /fo csv /v' si está disponible."""
     findings = []
@@ -191,11 +273,15 @@ def run_persistence_audit(
     # Linux / Unix
     if not sys.platform.startswith("win"):
         findings.extend(audit_linux_autostart(custom_autostart_dir))
+        if not custom_autostart_dir and Path("/etc/xdg/autostart").is_dir():
+            findings.extend(audit_linux_autostart("/etc/xdg/autostart"))
         findings.extend(audit_linux_cron())
+        findings.extend(audit_linux_systemd_user())
     # Windows
     else:
         findings.extend(audit_windows_startup_folders(custom_startup_dir))
         findings.extend(audit_windows_schtasks())
+        findings.extend(audit_windows_registry_run())
 
     total_audited = len(findings)
     suspicious_items = [f for f in findings if f.get("sospechoso")]

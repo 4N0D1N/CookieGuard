@@ -79,7 +79,7 @@ def verify_windows_authenticode(binary_path: str) -> Dict[str, Any]:
             f"Write-Output $sig.Status; Write-Output ($sig.SignerCertificate.Subject)"
         )
         proc = subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
+            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
             capture_output=True,
             text=True,
             timeout=8

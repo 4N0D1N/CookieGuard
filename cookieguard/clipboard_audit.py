@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Módulo de auditoría de portapapeles y detección de malware Clipper (MITRE ATT&CK T1115).
 
 Analiza de forma segura si el portapapeles contiene credenciales expuestas (JWT,
@@ -5,7 +6,7 @@ claves API, claves privadas) o direcciones de criptomonedas susceptibles de secu
 por stealer clippers (Lumma, RedLine, Vidar, Stealc).
 Permite además purgar/vaciar el portapapeles para evitar fuga de credenciales en memoria.
 
-100% Python estándar (ctypes en Windows, herramientas nativas en Linux).
+100% Python estándar (ctypes y fallback PowerShell en Windows, herramientas nativas en Linux).
 Zero telemetría. Sin dependencias externas.
 """
 from __future__ import annotations
@@ -84,49 +85,78 @@ CRYPTO_PATTERNS = [
 
 
 def _read_clipboard_windows() -> str:
-    """Lee el contenido de texto del portapapeles en Windows usando ctypes."""
-    import ctypes
-    from ctypes import wintypes
-
-    user32 = ctypes.windll.user32
-    kernel32 = ctypes.windll.kernel32
-
-    CF_UNICODETEXT = 13
-
-    if not user32.OpenClipboard(None):
-        return ""
-
+    """Lee el contenido de texto del portapapeles en Windows usando ctypes, con fallback a PowerShell."""
     try:
-        handle = user32.GetClipboardData(CF_UNICODETEXT)
-        if not handle:
-            return ""
-        kernel32.GlobalLock.restype = ctypes.c_void_p
-        kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
-        kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+        import ctypes
+        from ctypes import wintypes
 
-        ptr = kernel32.GlobalLock(handle)
-        if not ptr:
-            return ""
-        try:
-            text = ctypes.c_wchar_p(ptr).value or ""
-            return text
-        finally:
-            kernel32.GlobalUnlock(handle)
-    finally:
-        user32.CloseClipboard()
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        CF_UNICODETEXT = 13
+
+        if user32.OpenClipboard(None):
+            try:
+                handle = user32.GetClipboardData(CF_UNICODETEXT)
+                if handle:
+                    kernel32.GlobalLock.restype = ctypes.c_void_p
+                    kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+                    kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+
+                    ptr = kernel32.GlobalLock(handle)
+                    if ptr:
+                        try:
+                            text = ctypes.c_wchar_p(ptr).value or ""
+                            if text:
+                                return text
+                        finally:
+                            kernel32.GlobalUnlock(handle)
+            finally:
+                user32.CloseClipboard()
+    except Exception:
+        pass
+
+    # Fallback PowerShell si ctypes falla
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", "Get-Clipboard"],
+            capture_output=True, text=True, timeout=3, errors="ignore"
+        )
+        if proc.returncode == 0 and proc.stdout:
+            return proc.stdout.strip()
+    except Exception:
+        pass
+
+    return ""
 
 
 def _clear_clipboard_windows() -> bool:
-    """Vacía el portapapeles de Windows de forma segura."""
-    import ctypes
-    user32 = ctypes.windll.user32
-    if not user32.OpenClipboard(None):
-        return False
+    """Vacía el portapapeles de Windows de forma segura (ctypes + fallback PowerShell)."""
+    cleared = False
     try:
-        user32.EmptyClipboard()
-        return True
-    finally:
-        user32.CloseClipboard()
+        import ctypes
+        user32 = ctypes.windll.user32
+        if user32.OpenClipboard(None):
+            try:
+                user32.EmptyClipboard()
+                cleared = True
+            finally:
+                user32.CloseClipboard()
+    except Exception:
+        pass
+
+    if not cleared:
+        try:
+            proc = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", "Set-Clipboard -Value $null"],
+                capture_output=True, text=True, timeout=3, errors="ignore"
+            )
+            if proc.returncode == 0:
+                cleared = True
+        except Exception:
+            pass
+
+    return cleared
 
 
 def _read_clipboard_linux() -> str:
@@ -231,7 +261,6 @@ def audit_clipboard(sample_text: str | None = None) -> dict[str, Any]:
         matches = c["regex"].findall(text)
         if matches:
             for m in matches[:3]:
-                # Anonimizar parte de la dirección en el reporte
                 anon = m[:6] + "..." + m[-4:] if len(m) > 12 else m[:4] + "..."
                 cripto_detectadas.append({
                     "moneda": c["moneda"],

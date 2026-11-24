@@ -2,13 +2,15 @@
 """
 CookieGuard - Auditoría Heurística de Red Local (Archivo hosts y DNS).
 Inspecciona si malware o infostealers han manipulado el archivo hosts local
-para bloquear sitios de seguridad (antivirus, análisis) o redirigir portales de login.
+para bloquear sitios de seguridad (antivirus, análisis) o redirigir portales de login,
+e inspecciona los servidores DNS configurados en el sistema (Windows y Linux).
 """
 
 from __future__ import annotations
 import os
 import sys
 import re
+import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -141,16 +143,52 @@ def audit_linux_resolv_conf(resolv_path: Optional[Path] = None) -> Dict[str, Any
     }
 
 
+def audit_windows_dns() -> Dict[str, Any]:
+    """Inspecciona los servidores DNS configurados en Windows mediante netsh o PowerShell."""
+    if not sys.platform.startswith("win"):
+        return {"nameservers": [], "count": 0}
+
+    nameservers: List[str] = []
+    # 1. Intentar con netsh (rápido, sin overhead de powershell)
+    try:
+        proc = subprocess.run(["netsh", "interface", "ipv4", "show", "dnsservers"], capture_output=True, text=True, timeout=5, errors="ignore")
+        if proc.returncode == 0 and proc.stdout:
+            for line in proc.stdout.splitlines():
+                ip_match = re.search(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", line)
+                if ip_match:
+                    ip = ip_match.group(0)
+                    if ip not in nameservers and not ip.startswith("0.") and not ip.startswith("255."):
+                        nameservers.append(ip)
+    except Exception:
+        pass
+
+    # 2. Si netsh no devolvió nada, intentar PowerShell con ExecutionPolicy Bypass
+    if not nameservers:
+        try:
+            ps_cmd = "(Get-DnsClientServerAddress -AddressFamily IPv4).ServerAddresses"
+            proc = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
+                                  capture_output=True, text=True, timeout=5, errors="ignore")
+            if proc.returncode == 0 and proc.stdout:
+                for line in proc.stdout.splitlines():
+                    ip = line.strip()
+                    if re.match(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$", ip) and ip not in nameservers:
+                        nameservers.append(ip)
+        except Exception:
+            pass
+
+    return {
+        "nameservers": nameservers,
+        "count": len(nameservers)
+    }
+
+
 def run_network_audit(custom_hosts_path: Optional[Path] = None) -> Dict[str, Any]:
     """Ejecuta la auditoría integral de red local (hosts y DNS)."""
     hosts_path = custom_hosts_path if custom_hosts_path else get_default_hosts_path()
     entries = parse_hosts_file(hosts_path)
     anomalies = audit_hosts_entries(entries)
 
-    dns_info = {}
-    if not sys.platform.startswith("win"):
-        dns_info = audit_linux_resolv_conf()
-
+    dns_info = audit_windows_dns() if sys.platform.startswith("win") else audit_linux_resolv_conf()
     has_critical = any(a.get("severidad") == "CRITICAL" for a in anomalies)
 
     return {

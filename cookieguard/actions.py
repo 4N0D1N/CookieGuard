@@ -310,11 +310,34 @@ def hardening_checks(profiles: list[Profile]) -> list[dict]:
             add(f"asr_{rid}", f"Regla ASR: {desc}", "ok" if on else "mejorable", rid, "Aplicar (requiere administrador)", True)
         add("def_pua", "Defender: proteccion contra apps potencialmente no deseadas", "ok" if d.get("pua") == 1 else "mejorable",
             "", "Aplicar (requiere administrador)", True)
+        try:
+            code_lsa, out_lsa, _ = ps("(Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' -Name RunAsPPL -ErrorAction SilentlyContinue).RunAsPPL", 15)
+            lsa_val = out_lsa.strip()
+            add("lsa_ppl", "LSA Protection (RunAsPPL contra volcado de credenciales en memoria)",
+                "ok" if lsa_val in ("1", "2") else "mejorable",
+                f"valor actual {lsa_val or 'no configurado'}",
+                "Seguridad de Windows > Aislamiento del nucleo > Proteccion de autoridad de seguridad local")
+        except Exception:
+            pass
     else:
         try:
             sc = Path("/proc/sys/kernel/yama/ptrace_scope").read_text().strip()
             add("ptrace", "ptrace_scope (lectura de memoria entre procesos)", "ok" if sc != "0" else "mejorable",
                 f"valor actual {sc}", "sudo sysctl kernel.yama.ptrace_scope=1")
+        except OSError:
+            pass
+        try:
+            preg = Path("/proc/sys/fs/protected_regular").read_text().strip()
+            add("protected_regular", "fs.protected_regular (proteccion contra escritura en /tmp)",
+                "ok" if preg in ("1", "2") else "mejorable",
+                f"valor actual {preg}", "sudo sysctl fs.protected_regular=2")
+        except OSError:
+            pass
+        try:
+            dmp = Path("/proc/sys/fs/suid_dumpable").read_text().strip()
+            add("suid_dumpable", "fs.suid_dumpable (evitar volcados de memoria privilegiados)",
+                "ok" if dmp == "0" else "mejorable",
+                f"valor actual {dmp}", "sudo sysctl fs.suid_dumpable=0")
         except OSError:
             pass
     return res
