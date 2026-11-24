@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import json as _json
 import os
 import sys
 
@@ -151,6 +152,15 @@ def main(argv=None):
 
     sce = sub.add_parser("scan-extensions", help="Escanea el código de extensiones instaladas buscando firmas de exfiltración y C2")
     sce.add_argument("--json", action="store_true", help="Salida en formato JSON")
+
+    dwn = sub.add_parser("downloads", help="Revisa metadatos del historial de descargas Chromium; no confirma infección")
+    dwn.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    apb = sub.add_parser("appbound", help="Muestra indicadores App-Bound/DPAPI visibles; no valida protección en ejecución")
+    apb.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    ct = sub.add_parser("canary-trap", help="Muestra una simulación Canary sin sembrar cookies ni capturar IPs")
+    ct.add_argument("--dominio", default="login.microsoftonline.com", help="Dominio de referencia para la explicación")
+    ct.add_argument("--callback", default=None, help="URL anotada como referencia; no se contacta")
+    ct.add_argument("--json", action="store_true", help="Salida en formato JSON")
 
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
@@ -542,6 +552,42 @@ def main(argv=None):
             else:
                 print("  [OK] No se detectaron firmas maliciosas ni canales C2 en el código de las extensiones.")
         return 0 if not res["alertas"] else 1
+    elif args.cmd == "downloads":
+        from . import browsers, downloads_audit
+        res = downloads_audit.audit_all_downloads(browsers.discover())
+        if args.json:
+            print(_json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== REVISIÓN DE DESCARGAS CHROMIUM ({res['perfiles_analizados']} perfiles, {res['total_sospechosas']} elementos para revisar) ===")
+            if res["candidata_mas_reciente"]:
+                c = res["candidata_mas_reciente"]
+                print(f"  Más reciente marcada: {c['archivo']} | {c['fecha'] or 'fecha desconocida'} | {c['dominio_origen'] or 'origen desconocido'}")
+                print("  Esto es una pista basada en metadatos, no prueba de infección ni de ser el origen del incidente.")
+            print(f"  {res['recomendacion']}")
+        return 0
+    elif args.cmd == "appbound":
+        from . import browsers, appbound_audit
+        res = appbound_audit.audit_appbound_encryption(browsers._chromium_roots())
+        if args.json:
+            print(_json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== INDICADORES APP-BOUND / DPAPI ({res['navegadores_auditados']} archivos Local State) ===")
+            for item in res["detalles"]:
+                print(f"  {item['navegador']}: App-Bound marker={'presente' if item['marcador_app_bound'] else 'no detectado'}; DPAPI marker={'presente' if item['marcador_dpapi_legacy'] else 'no detectado'}")
+            print(f"  {res['resumen']}")
+        return 0
+    elif args.cmd == "canary-trap":
+        from .canary import generate_ip_trap_canary
+        res = generate_ip_trap_canary(domain=args.dominio, callback_url=args.callback)
+        if args.json:
+            print(_json.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print("=== SIMULACIÓN SEGURA CANARY (SIN CAPTURA DE IP) ===")
+            print(f"  Dominio de referencia: {res['dominio_referencia']}")
+            print(f"  Cookie creada: no | Solicitudes realizadas: 0 | IP capturada: no")
+            print(f"  {res['limite']}")
+            print(f"  {res['siguiente_paso']}")
+        return 0
     elif args.cmd == "extensions":
         from . import extensions
         res = extensions.audit_browser_extensions()

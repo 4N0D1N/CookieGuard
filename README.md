@@ -2,7 +2,7 @@
 
 > **Auditor local heurístico de metadatos de sesiones de navegador, con alertas y herramientas de respuesta guiada. No descifra valores de cookies y no sustituye a un EDR o antivirus.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.8.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-1.9.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%20%7C%20Linux-brightgreen)
@@ -57,6 +57,18 @@ CookieGuard inspecciona metadatos locales de perfiles de navegador y presenta se
 
 ---
 
+
+## 🚀 Novedades de la Versión 1.9.0
+
+- **Descargas Chromium (`cookieguard downloads`):** consulta en modo solo lectura metadatos del historial disponible y marca extensiones ejecutables/activas o archivos comprimidos para revisión. No lee el contenido descargado, no cubre Firefox en esta versión y no demuestra que un archivo sea malicioso ni que sea el origen de un incidente.
+- **Indicadores App-Bound/DPAPI (`cookieguard appbound`):** revisa únicamente marcadores visibles en `Local State`, sin descifrar claves o cookies. La presencia o ausencia de esos marcadores no valida la protección efectiva ni permite afirmar que un navegador esté seguro o vulnerable.
+- **Simulación Canary (`cookieguard canary-trap`):** explica el uso defensivo de señuelos sin insertar cookies, contactar callbacks ni recopilar direcciones IP. `--callback` solo aparece como dato de referencia y no genera tráfico.
+
+**Sobre atribución de IP y Cloudflare:** CookieGuard no puede averiguar la “IP real” de quien use una sesión robada ni desanonimizar servidores detrás de Cloudflare. En un servicio propio, el operador puede revisar los registros de acceso y la IP que observó el servicio; esa dirección puede corresponder a una VPN, proxy o CDN y no identifica necesariamente a una persona.
+
+Los tres comandos son locales y de solo lectura o simulación; los hallazgos son pistas heurísticas. Evita compartir informes sin revisarlos, porque pueden incluir nombres de archivos y dominios de origen.
+
+---
 
 ## 🚀 Novedades de la Versión 1.8.0
 
@@ -229,7 +241,7 @@ bash linux/instalar_vigilante.sh
 
 ## 🧪 Pruebas y Validación de Seguridad
 
-El proyecto incluye 84 pruebas automatizadas (77 unitarias y 7 de seguridad estricta) que garantizan el correcto funcionamiento y el cumplimiento estricto de los requisitos de privacidad:
+La suite automatizada se puede ejecutar localmente y también se ejecuta en CI para Windows y Linux con Python 3.10–3.12. Las pruebas no constituyen una certificación de seguridad:
 
 ```bash
 python3 -m unittest discover -s tests -v

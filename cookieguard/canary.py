@@ -244,3 +244,24 @@ def wizard_cli() -> int:
         else:
             print("Canary no activo o URL no valida.")
     return 0
+
+
+def generate_ip_trap_canary(domain: str = "login.microsoftonline.com", callback_url: str | None = None) -> dict:
+    """Simulación informativa. No crea cookie, no contacta callback ni captura direcciones IP."""
+    return {
+        "modo": "simulacion",
+        "dominio_referencia": domain,
+        "callback_configurado": bool(callback_url),
+        "callback_url": callback_url,
+        "cookie_creada": False,
+        "solicitudes_realizadas": 0,
+        "ip_capturada": False,
+        "limite": (
+            "CookieGuard no crea el señuelo ni registra IPs. Los registros de un servicio propio solo muestran "
+            "la dirección observada y no identifican necesariamente a una persona ni revelan una IP detrás de VPN, proxy o CDN."
+        ),
+        "siguiente_paso": (
+            "Para una investigación autorizada, consulta los registros de tu propio servicio o las alertas de un proveedor canary autorizado; "
+            "no intentes desanonimizar terceros."
+        ),
+    }
