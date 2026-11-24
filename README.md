@@ -205,6 +205,18 @@ python -m cookieguard clipboard --limpiar
 
 La interfaz gráfica (`python -m cookieguard.gui`) ofrece una consola de control intuitiva para gestionar la seguridad local:
 
+### Apariencia de la GUI
+
+La ventana incluye dos temas integrados, sin instalar bibliotecas visuales adicionales:
+
+- **Claro · Fluent:** superficies claras, tarjetas de resumen y acento azul.
+- **Oscuro · SOC:** fondo oscuro de alto contraste y acento celeste.
+- **Cambiar al instante:** usa el botón de tema de la barra superior o el selector de la pestaña **Ajustes**. El cambio no reinicia la aplicación.
+- **Recordar preferencia:** la selección se guarda en la configuración local de CookieGuard (`tema`) y se restaura al volver a abrir la GUI.
+- **Qué cambia:** fondo, textos, pestañas, tablas, campos de texto, botones, tarjetas KPI y el indicador de nivel.
+
+Los temas solo cambian la presentación; no alteran los análisis, permisos, vigilancia ni acciones de respuesta. La GUI depende de Tkinter, incluido con muchas instalaciones de Python, pero su disponibilidad visual debe comprobarse en cada sistema/paquete: el ejecutable puede seguir ofreciendo una interfaz clásica según la compilación de Tk.
+
 | Botón / Control | Función Exacta | Motivo de Seguridad |
 | :--- | :--- | :--- |
 | **🔍 Analizar Ahora** | Ejecuta un escaneo completo inmediato de todos los perfiles de navegadores detectados (Chrome, Edge, Firefox, Brave, Opera, etc.). | Permite auditar el estado del equipo bajo demanda tras sospechar de un archivo descargado o enlace dudoso. |

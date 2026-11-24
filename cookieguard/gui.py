@@ -24,6 +24,28 @@ SESS_COLS = [("nombre", "Servicio", 190), ("categoria", "Categoria", 90), ("cook
              ("ultimo_uso", "Ultimo uso", 120), ("estado", "Estado", 190), ("riesgo", "Riesgo", 60)]
 
 
+
+THEMES = {
+    "claro": {
+        "name": "Claro · Fluent", "bg": "#f1f5f9", "card": "#ffffff", "card_alt": "#f8fafc",
+        "border": "#cbd5e1", "fg": "#0f172a", "muted": "#64748b", "accent": "#0284c7",
+        "accent_fg": "#ffffff", "button": "#f8fafc", "button_fg": "#0f172a", "tab": "#e2e8f0",
+        "tab_fg": "#475569", "selected": "#ffffff", "selected_fg": "#0284c7", "tree": "#ffffff",
+        "tree_fg": "#0f172a", "tree_head": "#e2e8f0", "tree_sel": "#bae6fd", "text": "#ffffff",
+        "alert": "#fef3c7", "alert_fg": "#92400e", "alert_border": "#fde68a",
+        "levels": {"verde": "#10b981", "amarillo": "#f59e0b", "rojo": "#ef4444", "gris": "#94a3b8"}
+    },
+    "oscuro": {
+        "name": "Oscuro · SOC", "bg": "#0b0f19", "card": "#111827", "card_alt": "#1e293b",
+        "border": "#334155", "fg": "#f8fafc", "muted": "#94a3b8", "accent": "#38bdf8",
+        "accent_fg": "#0b0f19", "button": "#1e293b", "button_fg": "#f8fafc", "tab": "#111827",
+        "tab_fg": "#94a3b8", "selected": "#1e293b", "selected_fg": "#38bdf8", "tree": "#0f172a",
+        "tree_fg": "#f8fafc", "tree_head": "#1e293b", "tree_sel": "#1e3a8a", "text": "#0f172a",
+        "alert": "#451a03", "alert_fg": "#fde68a", "alert_border": "#78350f",
+        "levels": {"verde": "#10b981", "amarillo": "#f59e0b", "rojo": "#ef4444", "gris": "#64748b"}
+    }
+}
+
 def _fmt(v):
     if isinstance(v, datetime):
         return v.strftime("%Y-%m-%d %H:%M")
@@ -41,7 +63,12 @@ class App(tk.Tk):
         self.q: queue.Queue = queue.Queue()
         self.sort_col, self.sort_rev = "nombre", False
         self.profiles = []
+        self.current_theme = load_config().get("tema", "claro")
+        if self.current_theme not in THEMES:
+            self.current_theme = "claro"
+        self.kpi_cards = {}
         self._build()
+        self.apply_theme()
         self.after(150, self._poll)
         self.after(300, self.analizar)
 
@@ -64,6 +91,8 @@ class App(tk.Tk):
         self.status.pack(side="left", padx=12)
         self.btn_web = ttk.Button(top, text="🌐 Abrir Dashboard Web (HTML)", command=self.abrir_informe)
         self.btn_web.pack(side="right", padx=6)
+        self.btn_theme = ttk.Button(top, text="🌙 Oscuro", command=self.toggle_theme)
+        self.btn_theme.pack(side="right", padx=6)
         self.nb = ttk.Notebook(self)
         self.nb.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         self.tabs = {}
@@ -82,6 +111,102 @@ class App(tk.Tk):
         self._tab_ajustes()
         self._tab_ayuda()
 
+    def toggle_theme(self):
+        self.current_theme = "oscuro" if self.current_theme == "claro" else "claro"
+        self.apply_theme()
+        try:
+            save_user_config({"tema": self.current_theme})
+        except Exception:
+            pass
+        if hasattr(self, "theme_var"):
+            self.theme_var.set(self.current_theme)
+
+    def apply_theme(self):
+        t = THEMES[self.current_theme]
+        style = ttk.Style(self)
+        try:
+            if "clam" in style.theme_names():
+                style.theme_use("clam")
+        except Exception:
+            pass
+        style.configure("TFrame", background=t["bg"])
+        style.configure("Card.TFrame", background=t["card"])
+        style.configure("TLabel", background=t["bg"], foreground=t["fg"], font=("Segoe UI", 9))
+        style.configure("Card.TLabel", background=t["card"], foreground=t["fg"])
+        style.configure("Muted.TLabel", background=t["bg"], foreground=t["muted"])
+        style.configure("Header.TLabel", background=t["card"], foreground=t["fg"], font=("Segoe UI", 18, "bold"))
+        style.configure("TButton", background=t["button"], foreground=t["button_fg"], padding=(8, 5), font=("Segoe UI", 9))
+        style.map("TButton", background=[("active", t["tab"])], foreground=[("active", t["button_fg"])])
+        style.configure("Primary.TButton", background=t["accent"], foreground=t["accent_fg"], padding=(10, 6), font=("Segoe UI", 9, "bold"))
+        style.map("Primary.TButton", background=[("active", t["accent"])], foreground=[("active", t["accent_fg"])])
+        style.configure("TNotebook", background=t["bg"], borderwidth=0, tabmargins=(2, 4, 2, 0))
+        style.configure("TNotebook.Tab", background=t["tab"], foreground=t["tab_fg"], padding=(12, 6), font=("Segoe UI", 9))
+        style.map("TNotebook.Tab", background=[("selected", t["selected"]), ("active", t["card_alt"])], foreground=[("selected", t["selected_fg"])])
+        style.configure("Treeview", background=t["tree"], fieldbackground=t["tree"], foreground=t["tree_fg"], rowheight=26, font=("Segoe UI", 9))
+        style.configure("Treeview.Heading", background=t["tree_head"], foreground=t["fg"], padding=5, font=("Segoe UI", 9, "bold"))
+        style.map("Treeview", background=[("selected", t["tree_sel"])], foreground=[("selected", t["fg"])])
+        style.configure("TEntry", fieldbackground=t["card"], foreground=t["fg"])
+        style.configure("TCombobox", fieldbackground=t["card"], foreground=t["fg"])
+        style.configure("TCheckbutton", background=t["bg"], foreground=t["fg"])
+        style.configure("TRadiobutton", background=t["bg"], foreground=t["fg"])
+        style.map("TRadiobutton", background=[("active", t["bg"])], foreground=[("active", t["fg"])])
+        style.configure("TLabelframe", background=t["bg"], foreground=t["fg"])
+        style.configure("TLabelframe.Label", background=t["bg"], foreground=t["fg"], font=("Segoe UI", 9, "bold"))
+        self.configure(bg=t["bg"])
+        self._paint_tk_widgets(self, t)
+        # Restore deliberate card surfaces after the generic native-widget pass.
+        if hasattr(self, "hero_frame"):
+            self.hero_frame.configure(bg=t["card"], highlightbackground=t["border"], highlightcolor=t["border"])
+        if hasattr(self, "kpi_frame"):
+            self.kpi_frame.configure(bg=t["bg"])
+        for card in getattr(self, "kpi_cards", {}).values():
+            card["frame"].configure(bg=t["card"], highlightbackground=t["border"], highlightcolor=t["border"])
+            card["num"].configure(bg=t["card"], fg=t["fg"])
+            card["desc"].configure(bg=t["card"], fg=t["muted"])
+        if hasattr(self, "findings_box") and self.findings_box.winfo_manager():
+            self.findings_box.configure(bg=t["alert"], highlightbackground=t["alert_border"], highlightcolor=t["alert_border"])
+            self.lbl_findings_title.configure(bg=t["alert"], fg=t["alert_fg"])
+            self.lbl_findings_text.configure(bg=t["alert"], fg=t["alert_fg"])
+        if hasattr(self, "btn_theme"):
+            self.btn_theme.configure(text="🌙 Oscuro" if self.current_theme == "claro" else "☀️ Claro")
+        if self.res:
+            self._draw_indicator(self.res["veredicto"]["nivel"], self.res["veredicto"]["puntos"])
+        else:
+            self._draw_indicator("gris", 0)
+
+    def _paint_tk_widgets(self, parent, t):
+        for child in parent.winfo_children():
+            try:
+                if isinstance(child, tk.Text):
+                    child.configure(bg=t["text"], fg=t["fg"], insertbackground=t["fg"],
+                                    highlightbackground=t["border"], highlightcolor=t["accent"])
+                elif isinstance(child, tk.Canvas):
+                    child.configure(bg=t["card"] if child == getattr(self, "canvas", None) else t["bg"])
+                elif isinstance(child, tk.Frame):
+                    child.configure(bg=t["bg"])
+                elif isinstance(child, tk.Label):
+                    child.configure(bg=t["bg"], fg=t["fg"])
+                elif isinstance(child, tk.Entry):
+                    child.configure(bg=t["card"], fg=t["fg"], insertbackground=t["fg"])
+            except Exception:
+                pass
+            try:
+                self._paint_tk_widgets(child, t)
+            except Exception:
+                pass
+
+    def _draw_indicator(self, level, points):
+        if not hasattr(self, "canvas"):
+            return
+        t = THEMES[self.current_theme]
+        color = t["levels"].get(level, t["levels"]["gris"])
+        self.canvas.delete("all")
+        self.canvas.create_oval(8, 8, 112, 112, outline=color, width=3, fill=t["card_alt"])
+        self.canvas.create_oval(22, 22, 98, 98, outline="", fill=color)
+        inside = str(points) if points else ("✓" if level == "verde" else "·")
+        self.canvas.create_text(60, 60, text=inside, fill="#ffffff", font=("Segoe UI", 17, "bold"))
+        self.dot = None
+
     def _tree(self, parent, cols, height=None):
         fr = ttk.Frame(parent)
         t = ttk.Treeview(fr, columns=[c[0] for c in cols], show="headings", height=height or 15)
@@ -97,29 +222,56 @@ class App(tk.Tk):
     # ---------------------------------------------------------------- Resumen
     def _tab_resumen(self):
         f = self.tabs["Resumen"]
-        self.canvas = tk.Canvas(f, width=140, height=140, highlightthickness=0)
-        self.canvas.pack(pady=(20, 6))
-        self.dot = self.canvas.create_oval(10, 10, 130, 130, fill="#999", outline="")
-        self.lbl_nivel = ttk.Label(f, text="Analizando...", font=("Segoe UI", 20, "bold"))
+        self.hero_frame = tk.Frame(f, padx=18, pady=12, relief="solid", bd=1)
+        self.hero_frame.pack(fill="x", padx=14, pady=(12, 8))
+        self.canvas = tk.Canvas(self.hero_frame, width=120, height=120, highlightthickness=0)
+        self.canvas.pack(pady=(0, 2))
+        self._draw_indicator("gris", 0)
+        self.lbl_nivel = ttk.Label(self.hero_frame, text="Analizando…", style="Header.TLabel")
         self.lbl_nivel.pack()
-        self.lbl_texto = ttk.Label(f, text="", font=("Segoe UI", 11))
+        self.lbl_texto = ttk.Label(self.hero_frame, text="", style="Card.TLabel", justify="center", wraplength=950)
         self.lbl_texto.pack(pady=4)
-        self.lbl_stats = ttk.Label(f, text="", justify="center")
-        self.lbl_stats.pack(pady=6)
-        self.lbl_aviso = ttk.Label(f, text="", wraplength=900, foreground="#666", justify="center")
-        self.lbl_aviso.pack(pady=8)
+        self.findings_box = tk.Frame(self.hero_frame, padx=12, pady=8, relief="solid", bd=1)
+        self.lbl_findings_title = tk.Label(self.findings_box, text="⚠  Pistas principales", font=("Segoe UI", 9, "bold"))
+        self.lbl_findings_title.pack(anchor="w")
+        self.lbl_findings_text = tk.Label(self.findings_box, text="", justify="left", wraplength=900, font=("Segoe UI", 9))
+        self.lbl_findings_text.pack(anchor="w", pady=(3, 0))
+
+        self.kpi_frame = tk.Frame(f)
+        self.kpi_frame.pack(fill="x", padx=12, pady=5)
+        entries = [
+            ("cookies", "0", "Cookies de sesión", "🍪"),
+            ("servicios", "0", "Servicios", "◉"),
+            ("perfiles", "0", "Perfiles", "▣"),
+            ("alertas", "0", "Alertas", "⚠"),
+            ("zombies", "0", "Sesiones zombie", "◷")
+        ]
+        self.kpi_cards = {}
+        for col, (key, value, label, icon) in enumerate(entries):
+            self.kpi_frame.grid_columnconfigure(col, weight=1)
+            card = tk.Frame(self.kpi_frame, padx=8, pady=9, relief="solid", bd=1)
+            card.grid(row=0, column=col, padx=3, sticky="nsew")
+            num = tk.Label(card, text=f"{icon} {value}", font=("Segoe UI", 14, "bold"))
+            num.pack()
+            desc = tk.Label(card, text=label, font=("Segoe UI", 8))
+            desc.pack(pady=(2, 0))
+            self.kpi_cards[key] = {"frame": card, "num": num, "desc": desc, "icon": icon}
+
         bar = ttk.Frame(f)
         bar.pack(pady=8)
-        for txt, cmd in (("Abrir informe", self.abrir_informe), ("Exportar HTML", lambda: self.exportar("html")),
-                         ("Exportar CSV", lambda: self.exportar("csv")), ("Exportar JSON", lambda: self.exportar("json")),
-                         ("Modo incidente (ZIP)", self.incidente)):
-            ttk.Button(bar, text=txt, command=cmd).pack(side="left", padx=4)
-        self.lbl_errores = ttk.Label(f, text="", foreground="#8a5a00", wraplength=900, justify="center")
-        self.lbl_errores.pack(pady=4)
-        self.btn_admin = ttk.Button(f, text="Reintentar como administrador (copia VSS de bases bloqueadas)",
-                                    command=self.elevar)
-        self.lbl_ultima = ttk.Label(f, text="")
+        for text, cmd in (("📄 Informe", self.abrir_informe), ("Exportar HTML", lambda: self.exportar("html")),
+                          ("Exportar CSV", lambda: self.exportar("csv")), ("Exportar JSON", lambda: self.exportar("json")),
+                          ("🚨 Modo incidente (ZIP)", self.incidente)):
+            ttk.Button(bar, text=text, command=cmd).pack(side="left", padx=3)
+        self.lbl_aviso = ttk.Label(f, text="", wraplength=960, justify="center", style="Muted.TLabel")
+        self.lbl_aviso.pack(pady=4)
+        self.lbl_errores = ttk.Label(f, text="", wraplength=950, justify="center", foreground="#b45309")
+        self.lbl_errores.pack(pady=3)
+        self.btn_admin = ttk.Button(f, text="Reintentar como administrador (copia VSS)", command=self.elevar)
+        self.lbl_ultima = ttk.Label(f, text="", style="Muted.TLabel")
         self.lbl_ultima.pack(side="bottom", pady=6)
+        # Compatibilidad con la cadena de datos preexistente.
+        self.lbl_stats = ttk.Label(f, text="")
 
     # ---------------------------------------------------------------- Sesiones
     def _tab_sesiones(self):
@@ -509,6 +661,13 @@ class App(tk.Tk):
     def _tab_ajustes(self):
         f = self.tabs["Ajustes"]
         cfg = load_config()
+        appearance = ttk.LabelFrame(f, text="Tema visual")
+        appearance.pack(anchor="w", padx=12, pady=(10, 6), fill="x")
+        self.theme_var = tk.StringVar(value=self.current_theme)
+        ttk.Radiobutton(appearance, text="☀️ Claro · Fluent", value="claro", variable=self.theme_var,
+                        command=lambda: self._select_theme("claro")).pack(side="left", padx=10, pady=6)
+        ttk.Radiobutton(appearance, text="🌙 Oscuro · SOC", value="oscuro", variable=self.theme_var,
+                        command=lambda: self._select_theme("oscuro")).pack(side="left", padx=10, pady=6)
         self.var = {k: tk.BooleanVar(value=cfg.get(k, False)) for k in ("silencioso", "notificar_verde", "vigilante_activo", "canary_activo")}
         lab = {"silencioso": "Modo silencioso (solo avisar en Amarillo/Rojo)", "notificar_verde": "Avisar tambien cuando esta Verde",
                "vigilante_activo": "Vigilancia en tiempo real (arranca con la sesion)", "canary_activo": "Cookies canary (opcional)"}
@@ -532,6 +691,14 @@ class App(tk.Tk):
             "CookieGuard", "Metodo: " + notify("CookieGuard", "Notificacion de prueba", None))).pack(side="left", padx=3)
         ttk.Button(bb, text="Aceptar cambios pendientes como linea base", command=self.aceptar_base).pack(side="left", padx=3)
         ttk.Label(f, text=f"Datos: {data_dir()}  |  Administrador: {'si' if is_admin() else 'no'}", foreground="#666").pack(anchor="w", padx=12)
+
+    def _select_theme(self, key):
+        self.current_theme = key if key in THEMES else "claro"
+        self.apply_theme()
+        try:
+            save_user_config({"tema": self.current_theme})
+        except Exception:
+            pass
 
     def _tab_ayuda(self):
         f = self.tabs["Ayuda"]
@@ -592,16 +759,27 @@ class App(tk.Tk):
     def refresh(self):
         r = self.res
         v = r["veredicto"]
-        self.canvas.itemconfig(self.dot, fill=LEVELS[v["nivel"]]["color"])
-        self.lbl_nivel.config(text=f"{v['nombre']} - {v['puntos']} puntos")
-        texto_resumen = v["texto"]
+        self._draw_indicator(v["nivel"], v["puntos"])
+        self.lbl_nivel.config(text=f"{v['nombre'].upper()} · {v['puntos']} puntos")
+        self.lbl_texto.config(text=v["texto"])
         if v.get("principales"):
-            texto_resumen += "\n\n⚠️ Pistas principales:\n • " + "\n • ".join(v["principales"])
-        self.lbl_texto.config(text=texto_resumen)
+            self.findings_box.configure(bg=THEMES[self.current_theme]["alert"], highlightbackground=THEMES[self.current_theme]["alert_border"])
+            self.lbl_findings_title.configure(bg=THEMES[self.current_theme]["alert"], fg=THEMES[self.current_theme]["alert_fg"])
+            self.lbl_findings_text.configure(bg=THEMES[self.current_theme]["alert"], fg=THEMES[self.current_theme]["alert_fg"],
+                                             text="\n".join(f"• {p}" for p in v["principales"]))
+            self.findings_box.pack(fill="x", padx=10, pady=(8, 2))
+        else:
+            self.findings_box.pack_forget()
         st = r["estadisticas"]
-        self.lbl_stats.config(text=f"{st['cookies_sesion']} cookies de sesion  |  {len(r['grupos'])} servicios  |  "
-                                   f"{st['perfiles']} perfiles  |  {sum(1 for i in r['indicadores'] if i['estado'] == 'alerta')} indicadores en alerta  |  "
-                                   f"{sum(1 for g in r['grupos'] if g['zombie'])} sesiones zombie")
+        alerts = sum(1 for i in r["indicadores"] if i["estado"] == "alerta")
+        zombies = sum(1 for g in r["grupos"] if g["zombie"])
+        stats_line = (f"{st['cookies_sesion']} cookies de sesion  |  {len(r['grupos'])} servicios  |  {st['perfiles']} perfiles  |  "
+                      f"{alerts} indicadores en alerta  |  {zombies} sesiones zombie")
+        self.lbl_stats.config(text=stats_line)
+        for key, value in (("cookies", st["cookies_sesion"]), ("servicios", len(r["grupos"])),
+                           ("perfiles", st["perfiles"]), ("alertas", alerts), ("zombies", zombies)):
+            if key in self.kpi_cards:
+                self.kpi_cards[key]["num"].config(text=f"{self.kpi_cards[key]['icon']} {value}")
         self.lbl_aviso.config(text=v["aviso"])
         blocked = [e for e in r["errores"] if "bloqueada" in e]
         self.lbl_errores.config(text="\n".join(r["errores"][:6]) + ("\nCierra el navegador o reintenta como administrador." if blocked else ""))
@@ -780,7 +958,8 @@ class App(tk.Tk):
         except (ValueError, AssertionError):
             messagebox.showerror("CookieGuard", "Los umbrales deben ser numeros: Amarillo < Rojo")
             return
-        save_user_config({**{k: v.get() for k, v in self.var.items()}, "umbrales": {"amarillo": am, "rojo": ro},
+        save_user_config({**{k: v.get() for k, v in self.var.items()}, "tema": self.current_theme,
+                          "umbrales": {"amarillo": am, "rojo": ro},
                           "whitelist_procesos": [l.strip().lower() for l in self.txt_wl.get("1.0", "end").splitlines() if l.strip()]})
         messagebox.showinfo("CookieGuard", "Ajustes guardados. El vigilante se activa/desactiva con la instalacion o 'python -m cookieguard vigilar'.")
 
