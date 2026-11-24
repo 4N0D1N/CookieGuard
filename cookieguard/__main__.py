@@ -761,11 +761,11 @@ def main(argv=None):
             elif res["has_alerts"]:
                 print(f"  Se detectaron {res.get('total_alertas', 0)} alertas de seguridad en el portapapeles:")
                 for a in res["alertas"]:
-                    print(f"     - [{a["severidad"]}] {a["tipo"]}: {a["descripcion"]}")
-                    print(f"       Accion recomendada: {a["recomendacion"]}")
+                    print(f"     - [{a.get('severidad')}] {a.get('tipo')}: {a.get('descripcion')}")
+                    print(f"       Accion recomendada: {a.get('recomendacion')}")
             else:
                 print("  [OK] Portapapeles limpio: no se encontraron tokens activos ni direcciones vulnerables a clipper.")
-            print(f"  Recomendacion: {res["recomendacion"]}")
+            print(f"  Recomendacion: {res.get('recomendacion')}")
         return 0 if not res.get("has_critical", False) else 1
     return 0
 
