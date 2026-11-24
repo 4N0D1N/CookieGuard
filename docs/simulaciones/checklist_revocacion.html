@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CookieGuard - Playbook de Revocación de Sesiones</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #293548;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 24px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        header {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        h1 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .header-meta { color: var(--muted); font-size: 14px; }
+        .progress-box {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .progress-labels { display: flex; justify-content: space-between; font-weight: 600; font-size: 14px; }
+        .progress-bar-bg { background: var(--border); height: 10px; border-radius: 5px; overflow: hidden; }
+        .progress-bar-fill { background: var(--success); height: 100%; width: 0%; transition: width 0.3s ease; }
+        .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filter-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .filter-btn.active { background: var(--primary); border-color: var(--primary); }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .card.completed { border-color: var(--success); opacity: 0.75; }
+        .card.completed h3 { text-decoration: line-through; color: var(--muted); }
+        .card-header {
+            padding: 14px 18px;
+            background: rgba(255,255,255,0.02);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+        .title-row { display: flex; align-items: center; gap: 14px; }
+        h3 { font-size: 17px; font-weight: 600; }
+        .category { font-size: 12px; color: var(--muted); }
+        .badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .crit-alta { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid var(--danger); }
+        .crit-media { background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid var(--warning); }
+        .crit-baja { background: rgba(59, 130, 246, 0.2); color: #bfdbfe; border: 1px solid var(--primary); }
+        .card-body { padding: 18px; }
+        .subtitle { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .step-list { margin-left: 20px; font-size: 14px; margin-bottom: 16px; color: #cbd5e1; }
+        .step-list li { margin-bottom: 4px; }
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn {
+            text-decoration: none;
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: var(--border); color: #fff; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-tertiary { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid var(--border); }
+        .btn-tertiary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .check-container { position: relative; cursor: pointer; user-select: none; width: 22px; height: 22px; }
+        .check-container input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+        .checkmark {
+            position: absolute; top: 0; left: 0; height: 22px; width: 22px;
+            background-color: var(--border); border-radius: 5px;
+        }
+        .check-container:hover input ~ .checkmark { background-color: #475569; }
+        .check-container input:checked ~ .checkmark { background-color: var(--success); }
+        .checkmark:after { content: ""; position: absolute; display: none; }
+        .check-container input:checked ~ .checkmark:after { display: block; }
+        .check-container .checkmark:after {
+            left: 7px; top: 3px; width: 6px; height: 11px;
+            border: solid white; border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        footer { text-align: center; margin-top: 32px; color: var(--muted); font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚨 CookieGuard: Playbook de Revocación de Sesiones</h1>
+            <div class="header-meta">Generado el 2026-11-24 09:56:13 | Guía paso a paso para neutralizar cookies robadas</div>
+        </header>
+
+        <div class="progress-box">
+            <div class="progress-labels">
+                <span>Progreso de contención</span>
+                <span id="progress-text">0 / 18 completados (0%)</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="filterCards('all')">Todos (18)</button>
+            <button class="filter-btn" onclick="filterCards('crítica')">Críticos</button>
+            <button class="filter-btn" onclick="filterCards('alta')">Altos</button>
+            <button class="filter-btn" onclick="filterCards('media')">Medios</button>
+            <button class="filter-btn" onclick="resetProgress()" style="margin-left: auto; color: var(--danger);">Reiniciar checklist</button>
+        </div>
+
+        <div class="card-list">
+            
+        <div class="card" data-service="google" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_google" onchange="toggleTask('google')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Google / Gmail / Workspace</h3>
+                        <span class="category">Identidad y Correo</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Haz clic en &#x27;Cerrar sesión&#x27; en todos los dispositivos desconocidos o en el equipo comprometido.</li><li>Cambia la contraseña maestra de la cuenta inmediatamente.</li><li>Revisa en Gmail &gt; Configuración &gt; Reenvío y correo POP/IMAP que no existan reglas de reenvío silencioso.</li><li>Revisa &#x27;Acceso de aplicaciones de terceros&#x27; y revoca las apps sospechosas.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://myaccount.google.com/device-activity" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://myaccount.google.com/signinoptions/password" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="microsoft" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_microsoft" onchange="toggleTask('microsoft')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Microsoft 365 / Outlook / Azure</h3>
+                        <span class="category">Identidad y Correo</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Pulsa en &#x27;Cerrar sesión en todas partes&#x27; (Sign out everywhere) en Seguridad avanzada.</li><li>Cambia tu contraseña y regenera las claves de recuperación de MFA.</li><li>En Outlook Web, revisa Reglas de la bandeja de entrada para descartar reenvíos ocultos.</li><li>En Azure / Entra ID, revoca tokens de actualización (Revoke-AzureADUserAllRefreshToken).</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://account.microsoft.com/devices" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://account.live.com/password/change" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="github" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_github" onchange="toggleTask('github')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>GitHub</h3>
+                        <span class="category">Desarrollo y Código</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Pulsa &#x27;Revoke all other web sessions&#x27; para cerrar sesiones activas de navegador.</li><li>Revisa y revoca Personal Access Tokens (PATs) en Developer Settings &gt; Personal access tokens.</li><li>Inspecciona tus SSH Keys en Settings &gt; SSH and GPG keys y elimina claves no autorizadas.</li><li>Revisa Authorized OAuth Apps y GitHub Apps autorizadas.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://github.com/settings/sessions" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://github.com/settings/security" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://github.com/settings/applications" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="aws" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_aws" onchange="toggleTask('aws')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Amazon Web Services (AWS)</h3>
+                        <span class="category">Infraestructura Cloud</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Invalida las credenciales temporales generadas con STS.</li><li>Rota inmediatamente las Access Keys (Access Key ID y Secret Access Key).</li><li>Fuerza el cierre de sesiones en la consola de IAM y cambia la contraseña de usuario/consola.</li><li>Verifica la política IAM adjunta para detectar roles creados recientemente.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://us-east-1.console.aws.amazon.com/iam/home#/users" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="gitlab" data-crit="alta">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_gitlab" onchange="toggleTask('gitlab')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>GitLab</h3>
+                        <span class="category">Desarrollo y Código</span>
+                    </div>
+                </div>
+                <span class="badge crit-media">Alta</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Revoca todas las sesiones activas en la pestaña Active Sessions.</li><li>Revoca Personal Access Tokens y Deploy Tokens de repositorios clave.</li><li>Cambia contraseña y regenera 2FA.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://gitlab.com/-/profile/active_sessions" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://gitlab.com/-/profile/password/edit" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://gitlab.com/-/profile/applications" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="slack" data-crit="alta">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_slack" onchange="toggleTask('slack')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Slack</h3>
+                        <span class="category">Comunicación y Equipos</span>
+                    </div>
+                </div>
+                <span class="badge crit-media">Alta</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Pulsa &#x27;Sign out of all other sessions&#x27;.</li><li>Cambia tu contraseña de cuenta o solicita al administrador del Workspace que invalide tu sesión.</li><li>Revisa integraciones o bots vinculados a tu cuenta.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://my.slack.com/account/settings#sessions" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://my.slack.com/account/settings#password" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://my.slack.com/apps/manage" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="discord" data-crit="alta">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_discord" onchange="toggleTask('discord')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Discord</h3>
+                        <span class="category">Comunicación y Equipos</span>
+                    </div>
+                </div>
+                <span class="badge crit-media">Alta</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>En Ajustes de Usuario &gt; Dispositivos, desconecta todas las sesiones activas.</li><li>Al cambiar la contraseña en Ajustes &gt; Mi cuenta, Discord invalida automáticamente el token actual.</li><li>Revisa Aplicaciones autorizadas y revoca accesos de bots desconocidos.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://discord.com/channels/@me" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://discord.com/channels/@me" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://discord.com/channels/@me" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="telegram" data-crit="alta">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_telegram" onchange="toggleTask('telegram')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Telegram Web</h3>
+                        <span class="category">Comunicación y Equipos</span>
+                    </div>
+                </div>
+                <span class="badge crit-media">Alta</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>En Ajustes &gt; Dispositivos, pulsa &#x27;Cerrar todas las demás sesiones&#x27;.</li><li>Activa la Verificación en dos pasos (contraseña en la nube) si no estuviera activa.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://web.telegram.org/a/#?settings=devices" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://web.telegram.org/a/#?settings=privacy" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://web.telegram.org/a/#?settings=privacy" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="binance" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_binance" onchange="toggleTask('binance')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Binance</h3>
+                        <span class="category">Finanzas y Cripto</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>En &#x27;Gestión de dispositivos&#x27;, elimina inmediatamente todos los dispositivos desconocidos.</li><li>Cambia la contraseña (esto bloquea retiros temporalmente por protección durante 24-48h).</li><li>Desactiva o regenera las claves API de trading.</li><li>Verifica la lista blanca de direcciones de retiro.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://www.binance.com/es/my/security/device-management" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://www.binance.com/es/my/security" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://www.binance.com/es/my/security" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="coinbase" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_coinbase" onchange="toggleTask('coinbase')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Coinbase</h3>
+                        <span class="category">Finanzas y Cripto</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Revisa &#x27;Dispositivos activos&#x27; y finaliza todas las sesiones ajenas.</li><li>Cambia la contraseña y activa confirmación por hardware de seguridad.</li><li>Revoca claves API en la pestaña API.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://www.coinbase.com/settings/activity" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://www.coinbase.com/settings/security_settings" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://www.coinbase.com/settings/api" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="paypal" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_paypal" onchange="toggleTask('paypal')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>PayPal</h3>
+                        <span class="category">Finanzas y Cripto</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Cambia la contraseña de acceso.</li><li>Revisa &#x27;Dispositivos de confianza&#x27; y elimina los no reconocidos.</li><li>En &#x27;Permisos concedidos&#x27;, elimina pagos automáticos y comercios no autorizados.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://www.paypal.com/myaccount/security" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://www.paypal.com/myaccount/security/password" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://www.paypal.com/myaccount/security/permissions" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="stripe" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_stripe" onchange="toggleTask('stripe')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Stripe Dashboard</h3>
+                        <span class="category">Finanzas y Cripto</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Cierra todas las sesiones en Ajustes de usuario.</li><li>Rota inmediatamente las API Secret Keys y Restricted Keys.</li><li>Revisa usuarios invitados y permisos del equipo.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://dashboard.stripe.com/settings/user" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://dashboard.stripe.com/settings/user" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="cloudflare" data-crit="alta">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_cloudflare" onchange="toggleTask('cloudflare')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Cloudflare</h3>
+                        <span class="category">Infraestructura Cloud</span>
+                    </div>
+                </div>
+                <span class="badge crit-media">Alta</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Cierra sesiones activas en Perfil &gt; Sesiones.</li><li>Revoca y regenera API Tokens y Global API Key.</li><li>Revisa registros de auditoría (Audit Logs) para descartar cambios en registros DNS.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://dash.cloudflare.com/profile/sessions" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://dash.cloudflare.com/profile/authentication" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="openai" data-crit="media">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_openai" onchange="toggleTask('openai')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>OpenAI / ChatGPT</h3>
+                        <span class="category">IA y Productividad</span>
+                    </div>
+                </div>
+                <span class="badge crit-baja">Media</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>En Configuración &gt; Seguridad, pulsa &#x27;Cerrar sesión en todos los dispositivos&#x27;.</li><li>En la plataforma de desarrolladores, revoca las API Keys activas.</li><li>Cambia la contraseña de acceso.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://platform.openai.com/account/sessions" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://chatgpt.com/#settings/Security" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="twitter" data-crit="media">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_twitter" onchange="toggleTask('twitter')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>X (Twitter)</h3>
+                        <span class="category">Redes Sociales</span>
+                    </div>
+                </div>
+                <span class="badge crit-baja">Media</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Pulsa &#x27;Cerrar todas las demás sesiones&#x27;.</li><li>Cambia la contraseña.</li><li>Revoca aplicaciones conectadas sospechosas.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://twitter.com/settings/sessions" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://twitter.com/settings/password" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://twitter.com/settings/connected_apps" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="linkedin" data-crit="media">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_linkedin" onchange="toggleTask('linkedin')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>LinkedIn</h3>
+                        <span class="category">Redes Sociales</span>
+                    </div>
+                </div>
+                <span class="badge crit-baja">Media</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>Cierra sesiones activas desde &#x27;Dónde has iniciado sesión&#x27;.</li><li>Cambia la contraseña de la cuenta.</li><li>Revisa los servicios vinculados permitidos.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://www.linkedin.com/psettings/sessions" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://www.linkedin.com/psettings/change-password" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://www.linkedin.com/psettings/permitted-services" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="meta" data-crit="media">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_meta" onchange="toggleTask('meta')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Meta (Facebook / Instagram)</h3>
+                        <span class="category">Redes Sociales</span>
+                    </div>
+                </div>
+                <span class="badge crit-baja">Media</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>En Centro de Cuentas &gt; Dónde has iniciado sesión, selecciona &#x27;Cerrar sesión en todos los dispositivos&#x27;.</li><li>Cambia la contraseña de acceso.</li><li>Revisa apps y sitios web autorizados vinculados a tu cuenta.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://accountscenter.facebook.com/password_and_security" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://accountscenter.facebook.com/password_and_security" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://www.facebook.com/settings?tab=applications" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="card" data-service="apple" data-crit="crítica">
+            <div class="card-header">
+                <div class="title-row">
+                    <label class="check-container">
+                        <input type="checkbox" id="chk_apple" onchange="toggleTask('apple')">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div>
+                        <h3>Apple ID / iCloud</h3>
+                        <span class="category">Identidad y Correo</span>
+                    </div>
+                </div>
+                <span class="badge crit-alta">Crítica</span>
+            </div>
+            <div class="card-body">
+                <p class="subtitle">Pasos recomendados para contención:</p>
+                <ol class="step-list">
+                    <li>En la sección Dispositivos, elimina cualquier equipo ajeno.</li><li>Cambia la contraseña de tu ID de Apple.</li><li>Revisa y revoca &#x27;Iniciar sesión con Apple&#x27; en servicios externos.</li>
+                </ol>
+                <div class="action-buttons">
+                    <a href="https://appleid.apple.com/account/manage" target="_blank" rel="noopener noreferrer" class="btn btn-primary">🔗 Cerrar Sesiones</a>
+                    <a href="https://appleid.apple.com/account/manage" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">🔑 Cambiar Clave</a>
+                    <a href="https://appleid.apple.com/account/manage" target="_blank" rel="noopener noreferrer" class="btn btn-tertiary">🛡️ Permisos OAuth</a>
+                </div>
+            </div>
+        </div>
+        
+        </div>
+
+        <footer>
+            CookieGuard Incident Response | Los cambios de estado se guardan localmente en tu navegador.
+        </footer>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'cookieguard_playbook_state';
+
+        function loadState() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            } catch(e) {
+                return {};
+            }
+        }
+
+        function saveState(state) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function updateProgress() {
+            const cards = document.querySelectorAll('.card');
+            const total = cards.length;
+            let completed = 0;
+            cards.forEach(c => {
+                const id = c.getAttribute('data-service');
+                const chk = document.getElementById('chk_' + id);
+                if (chk && chk.checked) {
+                    completed++;
+                    c.classList.add('completed');
+                } else {
+                    c.classList.remove('completed');
+                }
+            });
+            const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+            document.getElementById('progress-text').innerText = `${completed} / ${total} completados (${pct}%)`;
+            document.getElementById('progress-fill').style.width = pct + '%';
+        }
+
+        function toggleTask(id) {
+            const chk = document.getElementById('chk_' + id);
+            const state = loadState();
+            state[id] = chk.checked;
+            saveState(state);
+            updateProgress();
+        }
+
+        function resetProgress() {
+            if (confirm('¿Deseas restablecer todos los elementos de la checklist?')) {
+                localStorage.removeItem(STORAGE_KEY);
+                document.querySelectorAll('.card input[type="checkbox"]').forEach(c => c.checked = false);
+                updateProgress();
+            }
+        }
+
+        function filterCards(crit) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.card').forEach(c => {
+                if (crit === 'all' || c.getAttribute('data-crit') === crit.toLowerCase()) {
+                    c.style.display = 'block';
+                } else {
+                    c.style.display = 'none';
+                }
+            });
+        }
+
+        // Inicializar estado guardado
+        window.addEventListener('DOMContentLoaded', () => {
+            const state = loadState();
+            for (const [id, val] of Object.entries(state)) {
+                const chk = document.getElementById('chk_' + id);
+                if (chk) chk.checked = !!val;
+            }
+            updateProgress();
+        });
+    </script>
+<div id="cg-toast" style="position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#111;color:#fff;padding:12px 16px;border-radius:10px;max-width:90%;font:14px sans-serif;display:none;z-index:99;word-break:break-all"></div>
+<script>
+document.addEventListener('click', function (ev) {
+  var a = ev.target.closest && ev.target.closest('a.btn[href^="https://"]');
+  if (!a) return;
+  ev.preventDefault();
+  var url = a.href, w = null;
+  try { w = window.open(url, '_blank', 'noopener'); } catch (e) {}
+  if (w) return;
+  var t = document.getElementById('cg-toast');
+  var done = function (m) { t.textContent = m + ' ' + url; t.style.display = 'block'; setTimeout(function () { t.style.display = 'none'; }, 9000); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function () { done('El visor bloquea ventanas nuevas. Enlace copiado, pégalo en tu navegador:'); }, function () { done('El visor bloquea ventanas nuevas. Copia este enlace:'); });
+  } else { done('El visor bloquea ventanas nuevas. Copia este enlace:'); }
+});
+</script>
+</body>
+</html>
