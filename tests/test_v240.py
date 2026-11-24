@@ -1,65 +1,80 @@
 """
-Pruebas unitarias para las novedades de CookieGuard v2.4.0:
+Pruebas unitarias para las novedades de CookieGuard v2.4.0 (unittest standard library):
 - Asistente de Rescate Cero-Confianza (rescue_wizard)
 - Auditoría de Descargas Recientes Sospechosas (downloads_audit)
-- Trampa Activa en Tiempo Real con Archivo Cebo (canary_trap)
+- Trampa Activa con Archivo Cebo (canary_trap)
 - Comandos CLI y compatibilidad multiplataforma
 """
 
+import io
 import json
+import os
+import shutil
 import sqlite3
 import tempfile
 import time
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from cookieguard import canary_trap, downloads_audit, rescue_wizard
 from cookieguard.__main__ import main
 
 
-class TestRescueWizard:
-    def test_run_rescue_plan(self, tmp_path):
-        res = rescue_wizard.run_rescue_plan(auto=True, killswitch=False, kill_browsers=False, output_dir=tmp_path)
-        assert res["fase_actual"] == "Completada"
-        assert len(res["rotacion_prioritaria"]) == 5
-        assert "archivo_reporte_html" in res
-        assert Path(res["archivo_reporte_html"]).exists()
-        assert "archivo_reporte_json" in res
-        assert Path(res["archivo_reporte_json"]).exists()
+class TestRescueWizard(unittest.TestCase):
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp(prefix="cg_test_rescue_")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+    def test_run_rescue_plan(self):
+        res = rescue_wizard.run_rescue_plan(auto=True, killswitch=False, kill_browsers=False, output_dir=self.tmp_dir)
+        self.assertEqual(res["fase_actual"], "Completada")
+        self.assertEqual(len(res["rotacion_prioritaria"]), 5)
+        self.assertIn("archivo_reporte_html", res)
+        self.assertTrue(Path(res["archivo_reporte_html"]).exists())
+        self.assertIn("archivo_reporte_json", res)
+        self.assertTrue(Path(res["archivo_reporte_json"]).exists())
 
         # Verificar contenido HTML
         html_content = Path(res["archivo_reporte_html"]).read_text(encoding="utf-8")
-        assert "Protocolo de Rescate" in html_content
-        assert "Google (Gmail)" in html_content
+        self.assertIn("Protocolo de Rescate", html_content)
+        self.assertIn("Google (Gmail)", html_content)
 
     def test_terminate_running_browsers_dry_run(self):
         res = rescue_wizard.terminate_running_browsers(dry_run=True)
-        assert len(res) > 0
-        assert res[0]["status"] == "simulado"
+        self.assertGreater(len(res), 0)
+        self.assertEqual(res[0]["status"], "simulado")
 
 
-class TestDownloadsAudit:
+class TestDownloadsAudit(unittest.TestCase):
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp(prefix="cg_test_downloads_")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
     def test_classify_risk(self):
         # 1. Doble extensión
         level, reasons = downloads_audit._classify_risk("factura.pdf.exe", "http://example.com")
-        assert level == "CRÍTICO"
-        assert any("Doble extensión" in r for r in reasons)
+        self.assertEqual(level, "CRÍTICO")
+        self.assertTrue(any("Doble extensión" in r for r in reasons))
 
         # 2. Extensión de riesgo
         level, reasons = downloads_audit._classify_risk("setup.scr", "http://example.com")
-        assert level == "ALTO"
+        self.assertEqual(level, "ALTO")
 
         # 3. Archivo normal pero desde CDN discord
         level, reasons = downloads_audit._classify_risk("documento.zip", "https://cdn.discordapp.com/attachments/123/payload.zip")
-        assert level == "CRÍTICO"
+        self.assertEqual(level, "CRÍTICO")
 
         # 4. Inocuo
         level, reasons = downloads_audit._classify_risk("foto.png", "https://example.com/foto.png")
-        assert level == "BAJO"
+        self.assertEqual(level, "BAJO")
 
-    def test_audit_chromium_downloads(self, tmp_path):
-        history_db = tmp_path / "History"
+    def test_audit_chromium_downloads(self):
+        history_db = Path(self.tmp_dir) / "History"
         conn = sqlite3.connect(str(history_db))
         cursor = conn.cursor()
         cursor.execute("""
@@ -88,65 +103,86 @@ class TestDownloadsAudit:
         conn.close()
 
         res = downloads_audit.audit_chromium_downloads(history_db, max_age_hours=24)
-        assert len(res) == 1
-        assert res[0]["archivo"] == "crack_photoshop.exe"
-        assert res[0]["nivel_riesgo"] == "CRÍTICO"
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["archivo"], "crack_photoshop.exe")
+        self.assertEqual(res[0]["nivel_riesgo"], "CRÍTICO")
 
 
-class TestCanaryTrap:
-    def test_deploy_and_check_traps(self, tmp_path, monkeypatch):
-        # Aislar directorio de configuración
-        cfg_dir = tmp_path / "cg_cfg"
-        monkeypatch.setattr(canary_trap, "_get_app_config_dir", lambda: cfg_dir)
+class TestCanaryTrap(unittest.TestCase):
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp(prefix="cg_test_canary_")
 
-        target_profile = tmp_path / "browser_profile"
-        target_profile.mkdir()
+    def tearDown(self):
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
-        # 1. Desplegar
-        deployed = canary_trap.deploy_canary_traps(custom_paths=[target_profile])
-        assert len(deployed) == 1
-        trap_file = Path(deployed[0]["path"])
-        assert trap_file.exists()
+    def test_deploy_and_check_traps(self):
+        cfg_dir = Path(self.tmp_dir) / "cg_cfg"
+        target_profile = Path(self.tmp_dir) / "browser_profile"
+        target_profile.mkdir(parents=True, exist_ok=True)
 
-        # 2. Comprobar intacta
-        check1 = canary_trap.check_canary_traps()
-        assert not check1["alerta_activa"]
-        assert check1["total_trampas"] == 1
-        assert check1["intactas"] == 1
+        with patch.object(canary_trap, "_get_app_config_dir", return_value=cfg_dir):
+            # 1. Desplegar
+            deployed = canary_trap.deploy_canary_traps(custom_paths=[target_profile])
+            self.assertEqual(len(deployed), 1)
+            trap_file = Path(deployed[0]["path"])
+            self.assertTrue(trap_file.exists())
 
-        # 3. Simular manipulación (modificar contenido)
-        with open(trap_file, "a") as f:
-            f.write("malware_tampering")
+            # 2. Comprobar intacta
+            check1 = canary_trap.check_canary_traps()
+            self.assertFalse(check1["alerta_activa"])
+            self.assertEqual(check1["total_trampas"], 1)
+            self.assertEqual(check1["intactas"], 1)
 
-        check2 = canary_trap.check_canary_traps()
-        assert check2["alerta_activa"]
-        assert check2["activadas"] == 1
+            # 3. Simular manipulación (modificar contenido)
+            with open(trap_file, "a") as f:
+                f.write("malware_tampering")
 
-        # 4. Limpieza
-        cleaned = canary_trap.cleanup_canary_traps()
-        assert cleaned == 1
-        assert not trap_file.exists()
-        check3 = canary_trap.check_canary_traps()
-        assert check3["total_trampas"] == 0
+            check2 = canary_trap.check_canary_traps()
+            self.assertTrue(check2["alerta_activa"])
+            self.assertEqual(check2["activadas"], 1)
+
+            # 4. Limpieza
+            cleaned = canary_trap.cleanup_canary_traps()
+            self.assertEqual(cleaned, 1)
+            self.assertFalse(trap_file.exists())
+            check3 = canary_trap.check_canary_traps()
+            self.assertEqual(check3["total_trampas"], 0)
 
 
-class TestCLIv240:
-    def test_cli_rescue(self, tmp_path, capsys):
-        code = main(["rescue", "--auto", "--salida", str(tmp_path)])
-        assert code == 0
-        captured = capsys.readouterr()
-        assert "PROTOCOLO DE RESCATE" in captured.out
-        assert "Fase 1" in captured.out
+class TestCLIv240(unittest.TestCase):
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp(prefix="cg_test_cliv240_")
 
-    def test_cli_descargas(self, capsys):
-        code = main(["descargas", "--hours", "72"])
-        assert code in (0, 1)
-        captured = capsys.readouterr()
-        assert "AUDITORÍA DE DESCARGAS RECIENTES" in captured.out
+    def tearDown(self):
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
-    def test_cli_trap(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setattr(canary_trap, "_get_app_config_dir", lambda: tmp_path)
-        code = main(["trap", "--check"])
-        assert code in (0, 2)
-        captured = capsys.readouterr()
-        assert "ESTADO DE TRAMPAS CANARY" in captured.out
+    def test_cli_rescue(self):
+        captured = io.StringIO()
+        with patch("sys.stdout", captured):
+            code = main(["rescue", "--auto", "--salida", self.tmp_dir])
+        self.assertEqual(code, 0)
+        out = captured.getvalue()
+        self.assertIn("PROTOCOLO DE RESCATE", out)
+        self.assertIn("Fase 1", out)
+
+    def test_cli_descargas(self):
+        captured = io.StringIO()
+        with patch("sys.stdout", captured):
+            code = main(["descargas", "--hours", "72"])
+        self.assertIn(code, (0, 1))
+        out = captured.getvalue()
+        self.assertIn("AUDITORÍA DE DESCARGAS RECIENTES", out)
+
+    def test_cli_trap(self):
+        cfg_dir = Path(self.tmp_dir) / "trap_cfg"
+        with patch.object(canary_trap, "_get_app_config_dir", return_value=cfg_dir):
+            captured = io.StringIO()
+            with patch("sys.stdout", captured):
+                code = main(["trap", "--check"])
+            self.assertIn(code, (0, 2))
+            out = captured.getvalue()
+            self.assertIn("ESTADO DE TRAMPAS CANARY", out)
+
+
+if __name__ == "__main__":
+    unittest.main()

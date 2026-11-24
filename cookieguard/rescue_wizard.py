@@ -139,7 +139,7 @@ def run_rescue_plan(
     Devuelve un diccionario estructurado con los resultados forenses y las acciones requeridas.
     """
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    out_dir = output_dir or Path(os.getcwd())
+    out_dir = Path(output_dir) if output_dir else Path(os.getcwd())
 
     report: dict[str, Any] = {
         "timestamp": timestamp,
