@@ -1,8 +1,8 @@
-# 🛡️ CookieGuard v2.0.0
+# 🛡️ CookieGuard v2.1.0
 
-> **Auditor forense y escudo defensivo local contra infostealers. Monitoriza, detecta y responde al secuestro de sesiones en navegadores y aplicaciones de escritorio. 100% Local-first, sin telemetría y sin dependencias externas obligatorias.**
+> **Auditor forense y escudo defensivo local contra infostealers. Monitoriza, detecta y responde al secuestro de sesiones en navegadores, aplicaciones de escritorio y portapapeles. 100% Local-first, sin telemetría y sin dependencias externas obligatorias.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.0.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.1.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%2010%2F11%20%7C%20Linux-brightgreen)
@@ -28,8 +28,8 @@ CookieGuard está diseñado para que cualquier persona entienda su estado de seg
 
 | Pregunta | Respuesta Clara |
 | :--- | :--- |
-| **¿QUÉ hace?** | Monitoriza las bases de datos de sesiones de tus navegadores, caza malware de robo de credenciales en ejecución, revisa la persistencia del sistema y ofrece botones inmediatos para aislar la red y revocar sesiones comprometidas. |
-| **¿CÓMO lo hace?** | De forma **100% local y pasiva**. Inspecciona marcas de tiempo, descriptores de archivo abiertos, firmas digitales de ejecutables y reglas de red. **NUNCA descifra ni expone el contenido de tus cookies o contraseñas**. |
+| **¿QUÉ hace?** | Monitoriza las bases de datos de sesiones de tus navegadores, caza malware en ejecución (incluyendo clippers de portapapeles), revisa la persistencia del sistema y ofrece contención inmediata (Killswitch de red) y revocación en 1 clic de sesiones comprometidas. |
+| **¿CÓMO lo hace?** | De forma **100% local y pasiva**. Inspecciona marcas de tiempo, descriptores de archivo abiertos, firmas digitales de ejecutables, búfer de portapapeles y reglas de red. **NUNCA descifra ni expone el contenido de tus cookies o contraseñas**. |
 | **¿POR QUÉ lo hace?** | Los **infostealers** modernos (*Lumma, Stealc, RedLine, Vidar*) ya no intentan adivinar contraseñas ni romper el 2FA: copian los archivos SQLite de cookies activas para clonar tu sesión directamente en otro ordenador. CookieGuard detecta ese acceso anómalo y te permite neutralizar el ataque antes de que sea tarde. |
 
 ---
@@ -65,7 +65,10 @@ python -m cookieguard dummy
 # 3. Iniciar la Interfaz Gráfica (GUI)
 python -m cookieguard.gui
 
-# 4. Abrir la Guía Interactiva de Revocación de Sesiones
+# 4. Modo Simulacro (Entrenamiento interactivo de incidente sin riesgo)
+python -m cookieguard drill
+
+# 5. Abrir la Guía Interactiva de Revocación de Sesiones
 # Abre docs/checklist_revocacion.html en tu navegador favorito
 ```
 
@@ -74,11 +77,11 @@ python -m cookieguard.gui
 ## 🛡️ Los 4 Pilares de CookieGuard
 
 <details open>
-<summary><b>1. 👁️ Detección y Caza de Amenazas (Watcher & Process Hunter)</b> [Clic para colapsar/desplegar]</summary>
+<summary><b>1. 👁️ Detección y Caza de Amenazas (Watcher, Process Hunter & Clipper)</b> [Clic para colapsar/desplegar]</summary>
 <br>
 
-* **Qué hace:** Vigila accesos no autorizados a las bases de datos de cookies (`Cookies`, `cookies.sqlite`) y caza procesos maliciosos en memoria.
-* **Cómo lo hace:** Compara marcas de tiempo de modificación, audita descriptores de archivos abiertos y analiza la lista de procesos buscando nombres fraudulentos (`chrome_update.exe`), rutas en `%TEMP%`/`/dev/shm` o inyecciones de código.
+* **Qué hace:** Vigila accesos no autorizados a las bases de datos de cookies (`Cookies`, `cookies.sqlite`), caza procesos maliciosos en memoria y audita si malware clipper está espiando o secuestrando tokens en el portapapeles.
+* **Cómo lo hace:** Compara marcas de tiempo de modificación, audita descriptores de archivos abiertos, analiza la lista de procesos buscando nombres fraudulentos (`chrome_update.exe`) y audita patrones de tokens (JWT, Bearer, AWS keys) y direcciones cripto en el portapapeles.
 * **Por qué:** Los infostealers copian la base de datos de cookies mientras el usuario utiliza el equipo para saltarse los bloqueos de lectura exclusivos. Detectar este patrón detiene la exfiltración a tiempo.
 
 </details>
@@ -94,11 +97,11 @@ python -m cookieguard.gui
 </details>
 
 <details open>
-<summary><b>3. 🚨 Respuesta Inmediata y Contención (Killswitch y Forense)</b> [Clic para colapsar/desplegar]</summary>
+<summary><b>3. 🚨 Respuesta Inmediata y Contención (Killswitch, Snapshots & Simulacro)</b> [Clic para colapsar/desplegar]</summary>
 <br>
 
-* **Qué hace:** Corta la conexión a Internet en 1 segundo ante sospecha de robo y genera una instantánea forense cifrada para análisis.
-* **Cómo lo hace:** Aplica reglas nativas en el firewall del sistema operativo (`netsh advfirewall` en Windows / `iptables` o `nmcli` en Linux) y empaqueta metadatos y registros en un archivo ZIP con cifrado AES-GCM opcional.
+* **Qué hace:** Corta la conexión a Internet en 1 segundo ante sospecha de robo, permite simular incidentes de forma inocua para entrenar y genera informes y snapshots forenses cifrados.
+* **Cómo lo hace:** Aplica reglas nativas en el firewall del sistema operativo (`netsh advfirewall` en Windows / `iptables` o `nmcli` en Linux), ofrece el comando `cookieguard drill` para simulacros controlados y empaqueta evidencias forenses en informes HTML/Markdown listos para imprimir a PDF.
 * **Por qué:** Cortar la red impide que el malware envíe las cookies a su servidor C2 o canal de Telegram, ganando tiempo para rotar las credenciales.
 
 </details>
@@ -118,6 +121,75 @@ python -m cookieguard.gui
 ## 📚 Documentación Técnica Detallada (Para quien quiera la opción completa)
 
 Despliega las siguientes secciones para consultar los manuales exhaustivos, parámetros avanzados y tablas de referencia:
+
+<details>
+<summary>🎮 <b>Modo Simulacro de Incidente en Vivo (Incident Drill)</b></summary>
+<br>
+
+El **Modo Simulacro** (`python -m cookieguard drill` o `cookieguard simulacro`) permite entrenar al equipo o comprobar personalmente cómo reacciona CookieGuard ante un ataque sin peligro alguno:
+
+1. **Entorno Aislado:** Crea un perfil temporal de pruebas y siembra una sesión señuelo (`SSO_ADMIN_SESSION`).
+2. **Ataque Simulado:** Dispara un evento de lectura concurrente no autorizado sobre la base de datos de pruebas.
+3. **Alerta y Semáforo:** Pasa automáticamente el semáforo a **🔴 ROJO (SIMULACRO)** y emite una notificación de escritorio real.
+4. **Verificación de Contención:** Valida que el cortafuegos (Killswitch) esté listo para bloquear el tráfico.
+5. **Reporte del Ejercicio:** Genera un informe HTML interactivo (`simulacro_incidente.html`) resumiendo la cronología del simulacro y los 3 pasos de respuesta rápida.
+
+```bash
+# Ejecutar simulacro interactivo
+python -m cookieguard drill
+
+# Ejecutar simulacro y guardar reporte HTML personalizado
+python -m cookieguard drill --html /ruta/reporte_simulacro.html
+
+# Ejecutar simulacro en formato JSON para integración continua o scripts
+python -m cookieguard drill --json
+```
+
+</details>
+
+<details>
+<summary>📄 <b>Generador de Informe Ejecutivo Forense PDF/Markdown (Report / Dossier)</b></summary>
+<br>
+
+CookieGuard genera informes formales listos para presentar ante comités de seguridad, CISO o peritajes forenses (`python -m cookieguard report` o `cookieguard informe`):
+
+* **Formato HTML Imprimible (PDF-Ready):** Maquetado profesional con soporte nativo de estilos `@media print` para exportar a PDF en 1 clic con diseño limpio, cabeceras oficiales y sellos de tiempo.
+* **Formato Markdown:** Estructurado para adjuntar en tickets de incidentes (Jira, ServiceNow, GitHub Issues).
+* **Contenido del Informe:**
+  * Resumen ejecutivo y veredicto semafórico.
+  * Matriz formal de alineación MITRE ATT&CK (técnicas, tácticas e indicadores detectados).
+  * Inventario de perfiles y cookies de sesión clasificadas por nivel de riesgo.
+  * Plan de acción y remediación en 5 minutos.
+
+```bash
+# Generar dossier HTML (por defecto, listo para Imprimir a PDF)
+python -m cookieguard report
+
+# Generar informe en formato Markdown
+python -m cookieguard report --formato md --salida /ruta/informe_incidente.md
+```
+
+</details>
+
+<details>
+<summary>📋 <b>Detector Heurístico de Clipper y Auditor de Portapapeles (MITRE T1115)</b></summary>
+<br>
+
+Muchos infostealers modernos (Lumma, Stealc, RedLine) integran módulos *Clipper* para espiar el portapapeles y sustituir direcciones criptográficas o robar tokens copiados:
+
+* **Auditoría Pasiva:** Inspecciona si el búfer de portapapeles contiene tokens JWT, cabeceras `Bearer`, claves privadas SSH/PGP, tokens de GitHub o claves de acceso AWS.
+* **Detección de Objetivos Clipper:** Detecta direcciones de Bitcoin (Legacy y SegWit), Ethereum, Solana y Tron en el portapapeles para advertir al usuario antes de transacciones.
+* **Purga Segura (`--limpiar` / `--clear`):** Vacía instantáneamente el portapapeles para eliminar secretos volátiles de la memoria antes de que puedan ser leídos por malware en segundo plano.
+
+```bash
+# Auditar el portapapeles actual
+python -m cookieguard clipboard
+
+# Vaciar y purgar el portapapeles inmediatamente
+python -m cookieguard clipboard --limpiar
+```
+
+</details>
 
 <details>
 <summary>🖥️ <b>Manual de la Interfaz Gráfica (GUI) - Explicación de Cada Botón</b></summary>
@@ -151,8 +223,10 @@ python -m cookieguard dummy                  # Resumen semafórico ejecutivo en 
 python -m cookieguard scan                   # Escaneo forense de sesiones de navegador
 python -m cookieguard watch                  # Monitorización continua en segundo plano
 
-# Caza y Persistencia
+# Caza, Portapapeles y Persistencia
 python -m cookieguard process-hunter         # Escaneo de procesos sospechosos e inyecciones
+python -m cookieguard clipboard              # Auditoría de portapapeles y clipper malware
+python -m cookieguard clipboard --limpiar    # Purga inmediata del contenido del portapapeles
 python -m cookieguard persistence            # Auditoría de tareas programadas y autostart
 python -m cookieguard integrity              # Verificación de firmas y permisos de navegadores
 
@@ -161,22 +235,24 @@ python -m cookieguard network                # Detección de sinkholing en archi
 python -m cookieguard certs                  # Detección de certificados CA MITM y proxies locales
 python -m cookieguard scan-extensions        # Escaneo heurístico de scripts de extensiones
 
-# Contención y Respuesta
+# Entrenamiento, Reportes y Contención
+python -m cookieguard drill                  # Simulacro de incidente en vivo (entrenamiento seguro)
+python -m cookieguard report --formato html  # Generación de informe ejecutivo forense (PDF-Ready)
 python -m cookieguard killswitch --block     # Bloqueo inmediato de red saliente
 python -m cookieguard killswitch --restore   # Restauración de conectividad de red
 python -m cookieguard snapshot --output /ruta # Generación de snapshot forense
 python -m cookieguard playbook --format html # Generación de guía de revocación offline
 ```
 
-*Para ver todas las opciones disponibles en cualquier comando, utiliza el flag `--help` (ejemplo: `python -m cookieguard persistence --help`).*
+*Para ver todas las opciones disponibles en cualquier comando, utiliza el flag `--help` (ejemplo: `python -m cookieguard drill --help`).*
 
 </details>
 
 <details>
-<summary>🔍 <b>Catálogo Forense de Indicadores Heurísticos (I01 a I19 + MITRE ATT&CK)</b></summary>
+<summary>🔍 <b>Catálogo Forense de Indicadores Heurísticos (I01 a I20 + MITRE ATT&CK)</b></summary>
 <br>
 
-CookieGuard evalúa el sistema frente a un catálogo formal de indicadores mapeados contra el marco global MITRE ATT&CK:
+CookieGuard evalúa el sistema frente a un catálogo formal de 20 indicadores mapeados contra el marco global MITRE ATT&CK:
 
 | ID | Indicador | Técnica MITRE | Severidad | Descripción y Criterio de Detección |
 | :---: | :--- | :---: | :---: | :--- |
@@ -199,6 +275,7 @@ CookieGuard evalúa el sistema frente a un catálogo formal de indicadores mapea
 | **I17** | *Anomalía de Freelist SQLite* | T1070 | 🟠 Alta | Base de datos con más del 40% de páginas libres, indicio de borrado masivo de registros para ocultar huellas. |
 | **I18** | *Objetivo de Escritorio Comprometido* | T1555 | 🟠 Alta | Extracción de metadatos o tokens en aplicaciones como Slack, Postman, Obsidian o Notion Desktop. |
 | **I19** | *Tráfico Anómalo / C2 Heurístico* | T1071.001 | 🔴 Crítica | Conexión saliente rápida tras evento de lectura de base de datos hacia servidores desconocidos. |
+| **I20** | *Exposición / Secuestro de Portapapeles* | T1115 | 🔴 Crítica | Tokens activos (JWT, API Keys) o criptodirecciones expuestas en portapapeles sujetas a malware clipper. |
 
 </details>
 
@@ -230,16 +307,16 @@ Puedes copiar CookieGuard en una memoria USB formateada y ejecutarlo en cualquie
 Si el semáforo se sitúa en **🔴 ROJO** o confirmas un acceso no autorizado:
 
 1. **Aislar de Inmediato:**
-   Ejecuta `python -m cookieguard killswitch --block` o desconecta físicamente el cable de red / Wi-Fi.
+   Ejecuta `python -m cookieguard killswitch --activar` o desconecta físicamente el cable de red / Wi-Fi.
 2. **Revocar Sesiones Críticas (Desde otro dispositivo limpio o tras cortar la red):**
    Abre `checklist_revocacion.html` y pulsa **Cerrar Sesiones** en:
    - Proveedores de identidad (Google, Microsoft, Apple).
    - Gestores de repositorios y nube (GitHub, GitLab, AWS, Azure).
    - Correo electrónico principal y servicios financieros.
 3. **Generar Evidencia:**
-   Genera un snapshot forense con `python -m cookieguard snapshot`.
+   Genera un informe formal o snapshot forense con `python -m cookieguard report` y `python -m cookieguard snapshot`.
 4. **Desinfectar y Restaurar:**
-   Revisa los procesos y tareas detectadas con `process-hunter` y `persistence`, elimina la amenaza y restablece la red con `killswitch --restore`.
+   Revisa los procesos y tareas detectadas con `process-hunter`, `clipboard --limpiar` y `persistence`, elimina la amenaza y restablece la red con `killswitch --desactivar`.
 
 </details>
 

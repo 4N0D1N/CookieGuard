@@ -182,6 +182,21 @@ def main(argv=None):
     sub.add_parser("version")
     for n in ("admin-instalar", "admin-desinstalar", "admin-sacl"):
         sub.add_parser(n)
+    drl = sub.add_parser("drill", help="Modo Simulacro de Incidente en vivo (entrenamiento de respuesta y contencion)")
+    drl.add_argument("--html", type=str, default=None, help="Ruta para generar informe HTML del simulacro")
+    drl.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("simulacro", help="Alias de drill: simulacro de incidente en vivo")
+
+    rep = sub.add_parser("report", help="Genera informe formal de incidente o dossier MITRE ATT&CK (PDF-ready o Markdown)")
+    rep.add_argument("--formato", choices=["html", "md"], default="html", help="Formato del informe")
+    rep.add_argument("--salida", type=str, default=None, help="Ruta de salida del archivo generado")
+    sub.add_parser("informe", help="Alias de report: informe forense formal")
+
+    cb = sub.add_parser("clipboard", help="Auditoria de portapapeles y deteccion de malware Clipper (MITRE T1115)")
+    cb.add_argument("--limpiar", "--clear", action="store_true", help="Purga el portapapeles de forma segura")
+    cb.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("clipper", help="Alias de clipboard: auditoria de portapapeles")
+
     args, _extra = ap.parse_known_args(argv)
 
     from . import actions, engine, reports
@@ -680,7 +695,7 @@ def main(argv=None):
                 print("  [OK] No se detectaron redirecciones maliciosas ni bloqueo de antivirus en el archivo hosts.")
             if "dns_info" in res and res["dns_info"].get("nameservers"):
                 print(f"  Servidores DNS detectados: {', '.join(res['dns_info']['nameservers'])}")
-        return 0 if not res["has_critical"] else 1
+        return 0 if not res.get("has_critical", False) else 1
 
     elif args.cmd == "canary-trap":
         from .canary import generate_ip_trap_canary
@@ -709,6 +724,49 @@ def main(argv=None):
                 if e["motivos"]:
                     print(f"      Riesgos: {', '.join(e['motivos'])}")
         return 0
+    elif args.cmd in ("drill", "simulacro"):
+        from . import simulator
+        out_html = getattr(args, "html", None)
+        res = simulator.run_incident_drill(interactive=not getattr(args, "json", False), output_html=out_html)
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        return 0
+    elif args.cmd in ("dossier", "report", "informe"):
+        from . import incident_report, engine
+        res_analysis = engine.run_analysis(update_state=False)
+        formato = getattr(args, "formato", "html")
+        salida = getattr(args, "salida", None)
+        path = incident_report.generate_incident_dossier(res_analysis, output_path=salida, formato=formato)
+        print(f"Informe ejecutivo forense ({formato.upper()}) generado con exito:")
+        print(f"  -> {path}")
+        return 0
+    elif args.cmd in ("clipboard", "clipper"):
+        from . import clipboard_audit
+        if getattr(args, "limpiar", False) or getattr(args, "clear", False):
+            ok = clipboard_audit.clear_system_clipboard()
+            if ok:
+                print("[OK] Portapapeles purgado correctamente. Ningun secreto residual en memoria.")
+            else:
+                print("[AVISO] No se pudo purgar el portapapeles o no hay soporte en este entorno.")
+            return 0 if ok else 1
+        res = clipboard_audit.audit_clipboard()
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print("=== AUDITORIA DE PORTAPAPELES Y CLIPPER MALWARE (MITRE T1115) ===")
+            if not res["accesible"]:
+                print("  [INFO] Portapapeles vacio o no accesible directamente en este entorno.")
+            elif res["has_alerts"]:
+                print(f"  Se detectaron {res.get('total_alertas', 0)} alertas de seguridad en el portapapeles:")
+                for a in res["alertas"]:
+                    print(f"     - [{a["severidad"]}] {a["tipo"]}: {a["descripcion"]}")
+                    print(f"       Accion recomendada: {a["recomendacion"]}")
+            else:
+                print("  [OK] Portapapeles limpio: no se encontraron tokens activos ni direcciones vulnerables a clipper.")
+            print(f"  Recomendacion: {res["recomendacion"]}")
+        return 0 if not res.get("has_critical", False) else 1
     return 0
 
 

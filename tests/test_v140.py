@@ -20,7 +20,7 @@ from cookieguard.detections import INDICATORS, Ctx, i16, i17
 
 class TestV140(TmpHome):
     def test_version_1_4_0(self):
-        self.assertIn(VERSION, ("1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0", "2.0.0"))
+        self.assertIn(VERSION, ("1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "1.9.0", "2.0.0", "2.1.0"))
 
     def test_indicadores_i16_e_i17_registrados(self):
         ind_names = [fn.__name__ for fn in INDICATORS]
