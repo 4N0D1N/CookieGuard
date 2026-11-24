@@ -2,17 +2,19 @@
 
 Soporta icono interactivo mediante pystray + Pillow si están disponibles,
 y fallback automático a modo daemon silencioso con notificaciones nativas de escritorio.
+Integra el Guardián Silencioso de bajo consumo para comprobaciones periódicas.
 """
 from __future__ import annotations
 
 import threading
 import time
 import webbrowser
-from typing import Callable
+from typing import Callable, Optional
 
 from .actions import enable_killswitch, disable_killswitch
 from .canary import plant_all_profiles
 from .common import IS_WIN, IS_LINUX, log, data_dir
+from .guardian import get_guardian
 
 
 def has_pystray() -> bool:
@@ -48,12 +50,17 @@ def _create_default_icon_image():
 
 
 class TrayApp:
-    def __init__(self, on_analyze: Callable | None = None):
+    def __init__(self, on_analyze: Optional[Callable] = None, interval_seconds: int = 10):
         self.on_analyze = on_analyze
+        self.interval = interval_seconds
         self.icon = None
         self._running = False
+        self.guardian = get_guardian(interval_seconds=self.interval)
 
     def run(self):
+        # Iniciar guardián en segundo plano
+        self.guardian.start(blocking=False)
+
         if not has_pystray():
             log("pystray o Pillow no disponibles; ejecutando vigilante en modo daemon en segundo plano")
             self._run_daemon_loop()
@@ -66,7 +73,7 @@ class TrayApp:
             return
 
         menu = pystray.Menu(
-            pystray.MenuItem("CookieGuard v1.2.0", lambda: None, enabled=False),
+            pystray.MenuItem("CookieGuard Guardian", lambda: None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("🔍 Analizar ahora", self._action_analyze),
             pystray.MenuItem("📊 Ver último informe", lambda: open_last_report()),
@@ -78,9 +85,12 @@ class TrayApp:
             pystray.MenuItem("❌ Salir", self._action_exit),
         )
 
-        self.icon = pystray.Icon("cookieguard", image, "CookieGuard - Vigilante de Sesiones", menu)
+        self.icon = pystray.Icon("cookieguard", image, "CookieGuard - Guardián Silencioso", menu)
         self._running = True
-        self.icon.run()
+        try:
+            self.icon.run()
+        finally:
+            self.guardian.stop()
 
     def _action_analyze(self):
         if self.on_analyze:
@@ -91,6 +101,7 @@ class TrayApp:
 
     def _action_exit(self):
         self._running = False
+        self.guardian.stop()
         if self.icon:
             self.icon.stop()
 
@@ -101,6 +112,7 @@ class TrayApp:
                 time.sleep(1)
         except KeyboardInterrupt:
             self._running = False
+            self.guardian.stop()
             log("Vigilante en segundo plano detenido por el usuario")
 
 

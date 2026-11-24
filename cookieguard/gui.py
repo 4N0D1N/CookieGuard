@@ -302,6 +302,12 @@ class App(tk.Tk):
         ttk.Button(btn_grid, text="Generar Dossier MITRE (HTML)", command=self._tool_dossier).grid(row=2, column=1, padx=4, pady=3, sticky="ew")
         ttk.Button(btn_grid, text="Abrir Playbook de Revocacion", command=self._tool_playbook).grid(row=2, column=2, padx=4, pady=3, sticky="ew")
 
+        # Fila 4: Mejoras de v2.2 - revisión, guardián y exportación asistida
+        ttk.Button(btn_grid, text="Extensiones Locales / Dev", command=self._tool_unpacked_extensions).grid(row=3, column=0, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Guardián: Comprobar Ahora", command=self._tool_guardian_once).grid(row=3, column=1, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Exportar Metadatos / Custodia", command=self._tool_forensic_custody).grid(row=3, column=2, padx=4, pady=3, sticky="ew")
+        ttk.Button(btn_grid, text="Crear Guías de Revocación", command=self._tool_revocation_scripts).grid(row=4, column=0, padx=4, pady=3, sticky="ew")
+
         btn_grid.columnconfigure(0, weight=1)
         btn_grid.columnconfigure(1, weight=1)
         btn_grid.columnconfigure(2, weight=1)
@@ -779,6 +785,34 @@ class App(tk.Tk):
         installer.elevate(["analizar", "--no-abrir"])
         self.analizar()
 
+
+    def _tool_unpacked_extensions(self):
+        from .unpacked_extension_audit import audit_all_unpacked_extensions
+        res = audit_all_unpacked_extensions()
+        self._show_tool_result("Extensiones Locales / Modo Desarrollador", res)
+
+    def _tool_guardian_once(self):
+        from .guardian import GuardianMonitor
+        res = GuardianMonitor(enable_clipboard_check=False).check_once()
+        self._show_tool_result("Guardián: comprobación puntual (no lee portapapeles)", {"alertas": res})
+
+    def _tool_forensic_custody(self):
+        from .forensic_custody import generate_forensic_custody_package
+        res = generate_forensic_custody_package()
+        self._show_tool_result("Exportación local de metadatos, no certificación pericial", res)
+
+    def _tool_revocation_scripts(self):
+        from .revocation_scripts import generate_revocation_scripts
+        res = generate_revocation_scripts()
+        self._show_tool_result("Guías de revocación manual asistida", res)
+
+    def _show_tool_result(self, title, result):
+        import json
+        text = title + "\n\n" + json.dumps(result, indent=2, ensure_ascii=False)
+        widget = getattr(self, "txt_herramientas", None)
+        if widget is not None:
+            widget.delete("1.0", "end")
+            widget.insert("end", text)
 
 def main():
     app = App()

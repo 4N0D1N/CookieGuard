@@ -1,8 +1,8 @@
-# 🛡️ CookieGuard v2.1.0
+# 🛡️ CookieGuard v2.2.0
 
 > **Auditor forense y escudo defensivo local contra infostealers. Monitoriza, detecta y responde al secuestro de sesiones en navegadores, aplicaciones de escritorio y portapapeles. 100% Local-first, sin telemetría y sin dependencias externas obligatorias.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.1.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.2.0-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%2010%2F11%20%7C%20Linux-brightgreen)
@@ -387,3 +387,38 @@ Si el semáforo se sitúa en **🔴 ROJO** o confirmas un acceso no autorizado:
 Distribuido bajo la licencia **MIT**. Consulta el archivo `LICENSE` para más información.
 
 *Descargo de responsabilidad: CookieGuard es una herramienta defensiva y de concienciación de seguridad. Los indicadores heurísticos son señales de alerta preventiva y no constituyen una certificación pericial infalible ni garantía de invulnerabilidad. El usuario es el único responsable de las acciones de revocación y administración de sus cuentas.*
+
+## Mejoras añadidas (v2.2.0)
+
+Estas funciones añaden capacidad de revisión local y apoyo a respuesta. No sustituyen a un EDR ni garantizan detectar un compromiso.
+
+### Auditoría de extensiones locales y Modo Desarrollador
+
+- **Comando:** `python -m cookieguard unpacked` (JSON: `--json`).
+- Revisa perfiles Chromium, `Preferences` / `Secure Preferences`, extensiones desempaquetadas y algunos argumentos de procesos de navegador (`--load-extension`, `--remote-debugging-port`, entre otros).
+- **Motivo:** una extensión local o un puerto de depuración expuesto puede ampliar el riesgo de acceso a sesiones.
+- **Límite:** la configuración y argumentos varían por navegador; el resultado es heurístico. Un Modo Desarrollador activado por sí solo no demuestra malware.
+
+### Guardián Silencioso opcional
+
+- **Una comprobación:** `python -m cookieguard guardian --once --json`.
+- **Vigilancia continua en primer plano:** `python -m cookieguard guardian --interval 15`; detener con `Ctrl+C`.
+- El intervalo mínimo es 10 segundos. De forma predeterminada no lee el portapapeles, para evitar inspeccionar datos personales sin una elección explícita. La comprobación del portapapeles se mantiene como acción manual aparte y no se activa en el monitor continuo.
+- **Motivo:** facilitar revisiones periódicas y avisos locales.
+- **Límite:** no es una protección de tiempo real, no tiene garantía de consumo fijo de recursos y no debe anunciarse como servicio de sistema. Los avisos dependen del soporte de notificaciones de cada escritorio.
+
+### Exportación local de metadatos
+
+- **Comando:** `python -m cookieguard custodia --salida ./expediente --perito "Nombre" --incidente CG-001`.
+- Crea un ZIP con JSON de metadatos/cadena de eventos, HTML imprimible, Markdown y hashes SHA-256.
+- No incluye valores de cookies ni credenciales. El hash detecta cambios posteriores, pero no acredita por sí solo identidad, hora, autenticidad ni admisibilidad legal. El responsable es un campo declarado, no una firma digital.
+- **Motivo:** entregar a un equipo técnico un resumen reproducible sin copiar datos de sesión.
+
+### Ayuda guiada para revocar sesiones
+
+- **Comando:** `python -m cookieguard scripts-revocacion --salida ./revocacion`.
+- Genera scripts PowerShell y Bash con modo `-DryRun` / `--dry-run` y una guía de portales oficiales.
+- Los scripts solo abren enlaces; no cierran navegadores, no borran tickets ni revocan automáticamente sesiones cloud. La revocación efectiva debe confirmarse dentro de la cuenta/proveedor.
+- **Motivo:** reducir errores y llevar a la persona a controles oficiales de revocación.
+
+> **Compatibilidad y validación:** las pruebas unitarias de estas mejoras son independientes del sistema operativo y están preparadas para CI en Windows y Linux. Los scripts generados deben revisarse y probarse primero en modo simulación. No se afirma una prueba manual de la GUI ni de notificaciones nativas en este entorno.

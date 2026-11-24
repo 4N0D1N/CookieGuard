@@ -199,6 +199,30 @@ def main(argv=None):
     cb.add_argument("--limpiar", "--clear", action="store_true", help="Purga el portapapeles de forma segura")
     cb.add_argument("--json", action="store_true", help="Salida en formato JSON")
     sub.add_parser("clipper", help="Alias de clipboard: auditoria de portapapeles")
+    unp = sub.add_parser("unpacked", help="Audita extensiones desempaquetadas (modo desarrollador / sideloaded)")
+    unp.add_argument("--json", action="store_true", help="Salida en JSON")
+    sub.add_parser("extensiones-dev", help="Alias de unpacked").add_argument("--json", action="store_true")
+    sub.add_parser("extensiones-locales", help="Alias de unpacked").add_argument("--json", action="store_true")
+
+    grd = sub.add_parser("guardian", help="Modo Guardián Silencioso en segundo plano de ultra bajo consumo")
+    grd.add_argument("--interval", type=int, default=10, help="Intervalo de sondeo en segundos (defecto: 10)")
+    grd.add_argument("--once", action="store_true", help="Ejecuta una sola ronda de comprobación y sale")
+    grd.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    sub.add_parser("guardian-silencioso", help="Alias de guardian").add_argument("--interval", type=int, default=10)
+    sub.add_parser("vigilar-silencioso", help="Alias de guardian").add_argument("--interval", type=int, default=10)
+
+    cst = sub.add_parser("custodia", help="Genera expediente pericial sellado con cadena de custodia para aseguradora")
+    cst.add_argument("--salida", help="Directorio destino del expediente")
+    cst.add_argument("--perito", default="Auditor Forense CookieGuard", help="Nombre o entidad del perito")
+    cst.add_argument("--incidente", help="Código de expediente")
+    cst.add_argument("--json", action="store_true", help="Salida en JSON")
+    sub.add_parser("peritaje", help="Alias de custodia").add_argument("--salida")
+    sub.add_parser("forensic-export", help="Alias de custodia").add_argument("--salida")
+
+    scr = sub.add_parser("scripts-revocacion", help="Genera scripts ejecutables locales de revocación masiva (PS1/Bash)")
+    scr.add_argument("--salida", help="Carpeta donde guardar los scripts generados")
+    scr.add_argument("--json", action="store_true", help="Salida en JSON")
+    sub.add_parser("revoke-scripts", help="Alias de scripts-revocacion").add_argument("--salida")
 
     args, _extra = ap.parse_known_args(argv)
 
@@ -770,6 +794,98 @@ def main(argv=None):
                 print("  [OK] Portapapeles limpio: no se encontraron tokens activos ni direcciones vulnerables a clipper.")
             print(f"  Recomendacion: {res.get('recomendacion')}")
         return 0 if not res.get("has_critical", False) else 1
+
+    elif args.cmd in ("unpacked", "extensiones-dev", "extensiones-locales"):
+        from . import unpacked_extension_audit
+        res = unpacked_extension_audit.audit_all_unpacked_extensions()
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print("=== AUDITORÍA DE EXTENSIONES DESEMPAQUETADAS Y MODO DESARROLLADOR ===")
+            print(f"  Estado general: {res['criticidad']} | Total hallazgos: {res['total_hallazgos']}")
+            if res["developer_mode"]:
+                print("  [AVISO] Modo Desarrollador activado en perfiles:")
+                for d in res["developer_mode"]:
+                    print(f"     - {d.get('fichero')} en {d.get('perfil')}")
+            if res["extensiones_desempaquetadas"]:
+                print("  [HALLAZGO] Extensiones locales no empaquetadas detectadas:")
+                for ext in res["extensiones_desempaquetadas"]:
+                    print(f"     - [{ext.get('nivel')}] {ext.get('nombre')} ({ext.get('id')})")
+                    print(f"       Ruta: {ext.get('ruta')}")
+                    if ext.get("permisos_criticos"):
+                        print(f"       Permisos críticos: {', '.join(ext.get('permisos_criticos'))}")
+            if res["flags_procesos"]:
+                print("  [ALERTA] Procesos de navegador con banderas sospechosas:")
+                for p in res["flags_procesos"]:
+                    print(f"     - [{p.get('nivel')}] {p.get('proceso')} (PID {p.get('pid')}): {p.get('flag')}")
+            if not res["todos_los_hallazgos"]:
+                print("  [OK] No se detectaron extensiones locales sin verificar ni banderas sospechosas en navegadores.")
+        return 0 if res["criticidad"] in ("Limpio", "Medio") else 1
+
+    elif args.cmd in ("guardian", "guardian-silencioso", "vigilar-silencioso"):
+        from . import guardian
+        interval = getattr(args, "interval", 10)
+        g = guardian.get_guardian(interval_seconds=interval)
+        if getattr(args, "once", False):
+            alerts = g.check_once()
+            if getattr(args, "json", False):
+                import json as _j
+                print(_j.dumps({"alertas": alerts, "stats": g.stats}, indent=2, ensure_ascii=False))
+            else:
+                print(f"=== COMPROBACIÓN GUARDIÁN SILENCIOSO ({len(alerts)} alertas detectadas) ===")
+                for a in alerts:
+                    print(f"  [{a.get('nivel')}] {a.get('titulo')}: {a.get('detalle')}")
+                if not alerts:
+                    print("  [OK] Entorno seguro: sin procesos maliciosos, secuestros de banderas ni anomalías en portapapeles.")
+            return 0 if not alerts else 1
+        else:
+            print(f"Iniciando Guardián Silencioso en segundo plano (intervalo: {interval}s)... Presiona Ctrl+C para detener.")
+            try:
+                g.start(blocking=True)
+            except KeyboardInterrupt:
+                g.stop()
+                print("\n[OK] Guardián detenido por el usuario.")
+            return 0
+
+    elif args.cmd in ("custodia", "peritaje", "forensic-export"):
+        from . import forensic_custody
+        salida = getattr(args, "salida", None)
+        perito = getattr(args, "perito", "Auditor Forense CookieGuard")
+        incidente = getattr(args, "incidente", None)
+        res = forensic_custody.generate_forensic_custody_package(
+            output_dir=salida,
+            analyst_name=perito,
+            incident_id=incidente
+        )
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print("=== EXPEDIENTE PERICIAL FORENSE GENERADO (SELLO DE CUSTODIA) ===") 
+            print(f"  Expediente ID: {res['expediente_id']}")
+            print(f"  Paquete Sellado: {res['archivo_zip']}")
+            print(f"  Hash SHA-256 (ZIP): {res['sha256_zip']}")
+            print(f"  Sello Maestro SHA-512: {res['sello_sha512'][:32]}...")
+            print(f"  Artefactos sellados: {res['total_artefactos']}")
+            print(f"  Informe Oficial HTML (PDF-Ready): {res['informe_html_path']}")
+        return 0
+
+    elif args.cmd in ("scripts-revocacion", "revoke-scripts"):
+        from . import revocation_scripts
+        salida = getattr(args, "salida", None)
+        res = revocation_scripts.generate_revocation_scripts(output_dir=salida)
+        if getattr(args, "json", False):
+            import json as _j
+            print(_j.dumps(res, indent=2, ensure_ascii=False))
+        else:
+            print("=== SCRIPTS DE REVOCACIÓN DE SESIONES POR LOTE GENERADOS ===")
+            print(f"  Directorio: {res['directorio']}")
+            print(f"  Script Windows PowerShell: {res['windows_ps1']}")
+            print(f"  Script Linux Bash: {res['linux_sh']}")
+            print(f"  Guía Corporativa M365/Google: {res['guia_corporativa_md']}")
+            print("  [INFO] Ejecuta el script según tu sistema operativo para invalidar sesiones activas de inmediato.")
+        return 0
     return 0
 
 
