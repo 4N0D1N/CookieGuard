@@ -285,14 +285,29 @@ def main(argv=None):
     from .common import VERSION
 
     if args.cmd in (None, "gui"):
+        # Flag opcional para forzar la interfaz clásica de Tkinter
+        if any(flag in sys.argv for flag in ("--classic", "--tkinter", "--legacy")):
+            try:
+                from . import gui
+                return gui.main()
+            except Exception as e:
+                print(f"Aviso: Interfaz clásica no disponible ({e}).")
+
+        # Lanzador predeterminado: Interfaz de escritorio moderna con PyWebView
         try:
-            from . import gui
-            return gui.main()
-        except (ImportError, Exception) as e:
-            print(f"Aviso: Interfaz nativa no disponible ({e}).")
-            print("Abriendo el dashboard visual e informe interactivo en tu navegador...")
-            res = engine.run_login(open_report=True, notify_user=False)
-            return 0
+            from . import webview_app
+            return webview_app.launch(debug="--debug" in sys.argv)
+        except Exception as e_wv:
+            # Fallback 1: Intentar interfaz Tkinter si PyWebView no está soportado en este entorno
+            try:
+                from . import gui
+                return gui.main()
+            except (ImportError, Exception) as e_tk:
+                # Fallback 2: Abrir reporte interactivo en el navegador local
+                print(f"Aviso: Interfaz de escritorio no disponible ({e_wv} / {e_tk}).")
+                print("Abriendo el dashboard visual e informe interactivo en tu navegador...")
+                res = engine.run_login(open_report=True, notify_user=False)
+                return 0
     if args.cmd == "version":
         print(VERSION)
     elif args.cmd == "analizar":

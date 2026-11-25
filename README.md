@@ -203,20 +203,17 @@ python -m cookieguard clipboard --limpiar
 <summary>🖥️ <b>Manual de la Interfaz Gráfica (GUI) - Explicación de Cada Botón</b></summary>
 <br>
 
-La interfaz gráfica (`python -m cookieguard.gui`) ofrece una consola de control para revisar la seguridad local:
+A partir de la versión **2.6.0**, CookieGuard incorpora una consola de escritorio de última generación impulsada por **PyWebView** (`CookieGuard.exe` o `python -m cookieguard`):
 
-### Apariencia de la GUI
+### Consola de Escritorio Moderna (PyWebView · Cyber SOC / Fluent)
 
-La versión **2.5.1** reemplaza la barra de pestañas clásica por navegación propia, plana y con estado activo visible; reorganiza la cabecera, reduce marcos duros y usa superficies más limpias. No añade bibliotecas visuales externas: sigue usando Tkinter, incluido en las builds oficiales.
-
-- **Claro · Fluent:** fondo claro, tarjetas limpias, azul de acento y texto de alto contraste.
-- **Oscuro · SOC:** fondo azul carbón, tarjetas oscuras y acento celeste.
-- **Cambiar al instante:** usa el control de tema de la cabecera o el selector de **Ajustes**; no reinicia la aplicación.
-- **Recordar preferencia:** el tema elegido se guarda localmente (`tema`) y se restaura al abrir.
-- **Navegación:** cada sección mantiene las mismas funciones; la sección activa queda subrayada.
-- **Estado del análisis:** la cabecera distingue preparación, análisis en curso y última actualización.
-
-Los temas solo cambian la presentación; no alteran análisis, permisos, vigilancia ni acciones. La interfaz usa componentes nativos de Tkinter para conservar el funcionamiento sin instalar dependencias. Las capturas y el aspecto exacto pueden variar entre Windows y Linux por las diferencias del sistema de ventanas; la apariencia moderna se consigue con colores, espaciado y navegación propia, no con un tema visual de terceros.
+La nueva interfaz ejecuta una consola de ciberseguridad interactiva dentro de una ventana de escritorio nativa sin dependencias externas en el equipo del usuario (utiliza el runtime de WebView2 de Windows 10/11):
+- **Barra Lateral de Navegación Rápida:** Acceso con 1 clic a Resumen, Sesiones Activas, Indicadores MITRE, Trampas Canary, Extensiones, Playbooks de Revocación y Herramientas.
+- **Medidor de Riesgo SVG:** Gráfico de anillo interactivo con puntuación ejecutiva de salud de sesiones y semáforo dinámico.
+- **Búsqueda y Filtros en Vivo:** Localiza sesiones por dominio, servicio o perfil al instante, con filtros rápidos para sesiones críticas, zombie o de larga duración.
+- **Modo Oscuro (Cyber SOC) y Modo Claro (Fluent):** Selector de tema instantáneo con persistencia en la configuración local.
+- **Playbooks de Revocación Integrados:** Enlaces directos a las páginas oficiales de invalidación de sesiones y cambio de clave para más de 35 servicios.
+- **Modo Clásico (Tkinter):** Si se prefiere la interfaz clásica ultra ligera de Tkinter, se puede iniciar en cualquier momento ejecutando `python -m cookieguard --classic` o `python -m cookieguard.gui`.
 
 | Botón / Control | Función Exacta | Motivo de Seguridad |
 | :--- | :--- | :--- |

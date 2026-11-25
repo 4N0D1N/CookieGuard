@@ -16,7 +16,7 @@ if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     APP_ROOT = Path(sys._MEIPASS)
 else:
     APP_ROOT = Path(__file__).resolve().parent.parent
-VERSION = "2.5.1"
+VERSION = "2.6.0"
 
 _perm_done: set = set()
 
