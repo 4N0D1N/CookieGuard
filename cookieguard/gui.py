@@ -85,7 +85,7 @@ class App(tk.Tk):
             pass
         top = ttk.Frame(self)
         top.pack(fill="x", padx=8, pady=6)
-        self.btn = ttk.Button(top, text="Analizar ahora", command=self.analizar)
+        self.btn = ttk.Button(top, text="🔍 Analizar ahora", command=self.analizar, style="Primary.TButton")
         self.btn.pack(side="left")
         self.status = ttk.Label(top, text="Listo")
         self.status.pack(side="left", padx=12)
