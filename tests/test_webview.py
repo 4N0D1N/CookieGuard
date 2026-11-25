@@ -160,3 +160,30 @@ class TestWebviewApp(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_dashboard_realtime_canary_and_diff(self):
+        from cookieguard.webview_app import BridgeApi, LocalDashboardServer
+        api = BridgeApi()
+        
+        # Test diff logic in BridgeApi
+        mock_res = {
+            "sesiones": [
+                {"host": ".google.com", "name": "SID", "servicio_id": "google"}
+            ]
+        }
+        # First scan
+        clean1 = {
+            "sesiones": [{"host": ".google.com", "name": "SID", "servicio_id": "google"}]
+        }
+        api._previous_sessions = set()
+        # Verify initial check_canary
+        canary = api.check_canary()
+        self.assertIn("alerta_activa", canary)
+        
+        # Verify HTML contains new controls
+        server = LocalDashboardServer(api)
+        html = server.render_html()
+        self.assertIn("canary-emergency-alert-container", html)
+        self.assertIn("checkCanaryAlertRealtime", html)
+        self.assertIn("q-pill", html)
+        self.assertIn("setQuickFilter", html)

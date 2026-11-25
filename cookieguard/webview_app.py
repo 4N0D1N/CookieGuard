@@ -1,4 +1,4 @@
-"""CookieGuard v2.7.2 · Consola de escritorio Cyber SOC idéntica al diseño oficial."""
+"""CookieGuard v2.7.3 · Consola de escritorio Cyber SOC idéntica al diseño oficial."""
 from __future__ import annotations
 
 import http.server
@@ -82,6 +82,16 @@ class BridgeApi:
             except Exception:
                 pass
             clean_res = sanitize_for_json(res)
+            prev = getattr(self, "_previous_sessions", None)
+            curr = set()
+            for s in clean_res.get("sesiones", []):
+                k = (str(s.get("host") or s.get("dominio") or ""), str(s.get("name") or s.get("nombre") or ""), str(s.get("servicio_id") or ""))
+                curr.add(k)
+                if prev is not None:
+                    s["is_new"] = (k not in prev)
+                else:
+                    s["is_new"] = False
+            self._previous_sessions = curr
             self.last_res = clean_res
             return clean_res
 
@@ -661,6 +671,34 @@ body {
   padding: 24px 32px 40px;
 }
 
+/* QUICK FILTER PILLS & CANARY ANIMATION */
+.q-pill {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.q-pill:hover {
+  background: var(--bg-card);
+  color: var(--text-main);
+  border-color: var(--accent);
+}
+.q-pill.active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+@keyframes pulseCanary {
+  0% { box-shadow: 0 0 8px rgba(220, 38, 38, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
+  100% { box-shadow: 0 0 8px rgba(220, 38, 38, 0.4); }
+}
+
 /* VIEW PANELS */
 .view-panel { display: none; }
 .view-panel.active { display: block; animation: viewFade 0.2s ease; }
@@ -1117,6 +1155,7 @@ body {
 </style>
 </head>
 <body>
+<div id="canary-emergency-alert-container"></div>
 
 <!-- TOPBAR -->
 <header class="topbar">
@@ -1438,7 +1477,17 @@ body {
       <!-- BOTTOM PANEL: DETECTED COOKIES TABLE -->
       <div class="table-card">
         <div class="table-ctrl-row">
-          <h3>Detected Cookies</h3>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <h3>Detected Cookies</h3>
+            <div class="quick-filter-pills" style="display:flex; gap:6px;">
+              <button type="button" class="q-pill active" onclick="setQuickFilter('all', this)">Todos</button>
+              <button type="button" class="q-pill" onclick="setQuickFilter('high', this)">🔥 Alto Riesgo</button>
+              <button type="button" class="q-pill" onclick="setQuickFilter('new', this)">✨ Nuevas</button>
+              <button type="button" class="q-pill" onclick="setQuickFilter('google', this)">Google</button>
+              <button type="button" class="q-pill" onclick="setQuickFilter('github', this)">GitHub</button>
+              <button type="button" class="q-pill" onclick="setQuickFilter('discord', this)">Discord</button>
+            </div>
+          </div>
           <div class="table-filters">
             <input type="text" class="filter-search" id="cookie-table-search" placeholder="Search cookies..." oninput="filterCookiesTable()">
             <select class="filter-select" id="filter-risk" onchange="filterCookiesTable()">
@@ -1765,13 +1814,16 @@ function updateDashboardUI(res) {
       const exp = c.expires ? String(c.expires).slice(0, 10) : (c.caducidad_max ? String(c.caducidad_max).slice(0, 10) : 'Active');
 
       const tr = document.createElement('tr');
+      const isNew = Boolean(c.is_new);
       tr.className = 'cookie-row';
       tr.dataset.service = svc.toLowerCase();
       tr.dataset.risk = riskLabel.toLowerCase();
+      tr.dataset.isNew = isNew ? 'true' : 'false';
       tr.dataset.search = (name + ' ' + host + ' ' + svc).toLowerCase();
+      const newBadge = isNew ? '<span class="badge-new-session" style="background:#10b98126; color:#10b981; border:1px solid #10b981; border-radius:4px; font-size:10px; font-weight:700; padding:1px 5px; margin-left:6px;">NUEVA</span>' : '';
       tr.innerHTML = `
         <td><input type="checkbox" class="row-check"></td>
-        <td><strong>${escapeHtml(name)}</strong></td>
+        <td><strong>${escapeHtml(name)}</strong>${newBadge}</td>
         <td>${escapeHtml(host)}</td>
         <td>${escapeHtml(svc)}</td>
         <td><span class="pill-badge ${pillClass}">${riskLabel}</span></td>
@@ -1915,18 +1967,75 @@ async function triggerCheckCanary() {
   document.getElementById('canary-output').innerText = JSON.stringify(res, null, 2);
 }
 
+window.currentQuickFilter = null;
+
+function setQuickFilter(f, btn) {
+  document.querySelectorAll('.q-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (f === 'all') {
+    document.getElementById('cookie-table-search').value = '';
+    document.getElementById('filter-risk').value = 'all';
+    document.getElementById('filter-service').value = 'all';
+    window.currentQuickFilter = null;
+  } else if (f === 'high') {
+    document.getElementById('filter-risk').value = 'high';
+    window.currentQuickFilter = null;
+  } else if (f === 'new') {
+    window.currentQuickFilter = 'new';
+  } else {
+    document.getElementById('cookie-table-search').value = f;
+    window.currentQuickFilter = null;
+  }
+  filterCookiesTable();
+}
+
 function filterCookiesTable() {
   const q = (document.getElementById('cookie-table-search').value || '').toLowerCase();
   const risk = document.getElementById('filter-risk').value;
   const svc = document.getElementById('filter-service').value.toLowerCase();
+  const onlyNew = window.currentQuickFilter === 'new';
 
-  document.querySelectorAll('#detected-cookies-tbody tr').forEach(row => {
+  document.querySelectorAll('#detected-cookies-tbody tr.cookie-row').forEach(row => {
     const text = row.innerText.toLowerCase();
     const matchQ = !q || text.includes(q);
-    const matchSvc = svc === 'all' || text.includes(svc);
-    row.style.display = (matchQ && matchSvc) ? '' : 'none';
+    const matchSvc = svc === 'all' || (row.dataset.service && row.dataset.service.includes(svc)) || text.includes(svc);
+    const matchRisk = risk === 'all' || row.dataset.risk === risk;
+    const matchNew = !onlyNew || row.dataset.isNew === 'true';
+
+    row.style.display = (matchQ && matchSvc && matchRisk && matchNew) ? '' : 'none';
   });
 }
+
+async function checkCanaryAlertRealtime() {
+  try {
+    const status = await callApi('check_canary');
+    const container = document.getElementById('canary-emergency-alert-container');
+    if (!container) return;
+    if (status && (status.alerta_activa || (status.activadas && status.activadas > 0))) {
+      if (!document.getElementById('canary-emergency-banner')) {
+        container.innerHTML = `
+          <div id="canary-emergency-banner" style="background:linear-gradient(90deg, #991b1b, #dc2626); color:#ffffff; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 16px rgba(220,38,38,0.4); border-bottom:2px solid #f87171; animation:pulseCanary 2s infinite;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="font-size:24px;">🚨</span>
+              <div>
+                <div style="font-weight:700; font-size:14px; text-transform:uppercase; letter-spacing:0.5px;">¡Alerta Crítica: Acceso a Trampa Canary Detectado!</div>
+                <div style="font-size:12px; opacity:0.95;">Se detectó lectura o apertura en la base de datos trampa. Posible intento de extracción o malware activo.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn-emergency" onclick="triggerEmergencyMode()" style="background:#ffffff; color:#dc2626; border:none; font-weight:700; padding:8px 16px; border-radius:6px; cursor:pointer;">⚡ Modo Emergencia</button>
+              <button onclick="document.getElementById('canary-emergency-banner').remove()" style="background:rgba(0,0,0,0.3); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;">✕</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+  } catch (e) {
+    // ignorar fallo de sondeo
+  }
+}
+
+setInterval(checkCanaryAlertRealtime, 8000);
 
 function handleGlobalSearch(q) {
   if (!q) return;

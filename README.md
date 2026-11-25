@@ -2,7 +2,7 @@
 
 > **Auditor forense y escudo defensivo local contra infostealers. Monitoriza, detecta y responde al secuestro de sesiones en navegadores, aplicaciones de escritorio y portapapeles. 100% Local-first, sin telemetría y sin dependencias externas obligatorias.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.4.0-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.7.3-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%2010%2F11%20%7C%20Linux-brightgreen)
@@ -486,6 +486,17 @@ Estas funciones añaden capacidad de revisión local y apoyo a respuesta. No sus
 
 > **Compatibilidad y validación:** las pruebas unitarias de estas mejoras son independientes del sistema operativo y están preparadas para CI en Windows y Linux. Los scripts generados deben revisarse y probarse primero en modo simulación. No se afirma una prueba manual de la GUI ni de notificaciones nativas en este entorno.
 
+
+### Versión 2.7.3 · Alerta Canary en Vivo, Diff Histórico & Filtros Dinámicos
+
+- **Alerta en Tiempo Real en la Pestaña:** El panel consulta en segundo plano el estado de las trampas Canary. Si algún proceso o malware accede a la base de datos trampa, se despliega de inmediato un banner rojo de emergencia en la cabecera con botón de contención instantánea (*Modo Emergencia*).
+- **Comparador Diff de Sesiones:** El motor compara cada escaneo con el anterior. Las sesiones que aparezcan por primera vez reciben automáticamente la insignia destacada **`NUEVA`**.
+- **Filtros Rápidos Dinámicos:** Selector instantáneo por niveles de riesgo (*Alto Riesgo*), novedades (*Nuevas*) y proveedores (*Google*, *GitHub*, *Discord*) sobre la tabla de cookies, junto a búsqueda en vivo sin recargar la página.
+
+### Versión 2.7.2 · Informe Imprimible y Exportación PDF en Pestaña Independiente
+
+- **Botón «📄 Informe PDF»:** Accesible directamente desde la barra de acciones principal del dashboard.
+- **Ruta `/informe` con Estilos de Impresión (`@media print`):** Abre el dossier forense completo en una pestaña dedicada, con controles flotantes para imprimir o guardar como PDF (`Ctrl+P` o `window.print()`).
 
 ### Versión 2.7.0 · Consola Cyber SOC Oficial & Fallback SQLite Inmutable
 
