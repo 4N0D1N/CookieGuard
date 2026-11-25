@@ -46,6 +46,26 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_seguridad.py"
 
+      - name: Install Pillow for Windows GUI snapshot
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check pillow
+
+      - name: Visual GUI check on Windows (Anti-Classic Tkinter check)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          python tools/verificar_gui_windows.py
+
+      - name: Upload Windows GUI visual verification screenshot
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-gui-screenshot-py${{ matrix.python-version }}
+          path: artifacts/cookieguard_windows_gui.png
+          if-no-files-found: ignore
+
   validate-stix:
     name: Validate STIX 2.1 export
     runs-on: ubuntu-latest

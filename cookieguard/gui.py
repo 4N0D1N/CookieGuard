@@ -74,33 +74,65 @@ class App(tk.Tk):
 
     # ---------------------------------------------------------------- construccion
     def _build(self):
+        """Construye una GUI plana y ligera; evita las pestañas clásicas de ttk.Notebook."""
         try:
             style = ttk.Style(self)
             if "clam" in style.theme_names():
                 style.theme_use("clam")
-            style.configure("Treeview", rowheight=24)
-            style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"))
-            style.configure("TButton", padding=4)
+            style.configure("Treeview", rowheight=28, borderwidth=0)
+            style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"), relief="flat")
+            style.configure("TButton", padding=(11, 7), relief="flat", borderwidth=0, focusthickness=0,
+                            font=("Segoe UI", 9))
         except Exception:
             pass
-        top = ttk.Frame(self)
-        top.pack(fill="x", padx=8, pady=6)
-        self.btn = ttk.Button(top, text="🔍 Analizar ahora", command=self.analizar, style="Primary.TButton")
-        self.btn.pack(side="left")
-        self.status = ttk.Label(top, text="Listo")
-        self.status.pack(side="left", padx=12)
-        self.btn_web = ttk.Button(top, text="🌐 Abrir Dashboard Web (HTML)", command=self.abrir_informe)
-        self.btn_web.pack(side="right", padx=6)
-        self.btn_theme = ttk.Button(top, text="🌙 Oscuro", command=self.toggle_theme)
-        self.btn_theme.pack(side="right", padx=6)
-        self.nb = ttk.Notebook(self)
-        self.nb.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        self.tabs = {}
-        for n in ("Resumen", "Sesiones activas", "Indicadores", "Extensiones", "Acciones / Rotacion", "Herramientas", "Historial",
-                  "Ajustes", "Ayuda"):
-            f = ttk.Frame(self.nb)
-            self.nb.add(f, text=n)
-            self.tabs[n] = f
+
+        self.shell = tk.Frame(self, bd=0, highlightthickness=0)
+        self.shell.pack(fill="both", expand=True)
+
+        top = tk.Frame(self.shell, bd=0, padx=22, pady=15)
+        top.pack(fill="x")
+        self.brand_mark = tk.Label(top, text="◆", font=("Segoe UI", 17, "bold"), padx=11, pady=5,
+                                   relief="flat", bd=0)
+        self.brand_mark.pack(side="left")
+        brand_copy = tk.Frame(top, bd=0)
+        brand_copy.pack(side="left", padx=(8, 18))
+        self.brand_title = tk.Label(brand_copy, text="CookieGuard", font=("Segoe UI", 16, "bold"), anchor="w")
+        self.brand_title.pack(anchor="w")
+        self.brand_subtitle = tk.Label(brand_copy, text="LOCAL SESSION SECURITY", font=("Segoe UI", 8, "bold"), anchor="w")
+        self.brand_subtitle.pack(anchor="w", pady=(1, 0))
+        self.status = tk.Label(top, text="●  Preparado", font=("Segoe UI", 9), padx=10, pady=6, bd=0)
+        self.status.pack(side="left", padx=8)
+
+        actions = tk.Frame(top, bd=0)
+        actions.pack(side="right")
+        self.btn_web = ttk.Button(actions, text="Abrir informe web", command=self.abrir_informe)
+        self.btn_web.pack(side="right", padx=(8, 0))
+        self.btn_theme = ttk.Button(actions, text="☾  Oscuro", command=self.toggle_theme)
+        self.btn_theme.pack(side="right", padx=(8, 0))
+        self.btn = ttk.Button(actions, text="⌕  Analizar ahora", command=self.analizar, style="Primary.TButton")
+        self.btn.pack(side="right")
+
+        self.nav = tk.Frame(self.shell, bd=0, padx=18, pady=5)
+        self.nav.pack(fill="x")
+        self.nav_buttons = {}
+        self.nav_indicators = {}
+        tab_names = ("Resumen", "Sesiones activas", "Indicadores", "Extensiones", "Acciones / Rotacion",
+                     "Herramientas", "Historial", "Ajustes", "Ayuda")
+        for name in tab_names:
+            item = tk.Frame(self.nav, bd=0, padx=1)
+            item.pack(side="left", padx=(0, 5))
+            button = tk.Button(item, text=name, command=lambda n=name: self._select_tab(n),
+                               relief="flat", bd=0, padx=11, pady=9, font=("Segoe UI", 9),
+                               cursor="hand2", highlightthickness=0)
+            button.pack(fill="x")
+            indicator = tk.Frame(item, height=2, bd=0)
+            indicator.pack(fill="x")
+            self.nav_buttons[name] = button
+            self.nav_indicators[name] = indicator
+
+        self.content = tk.Frame(self.shell, bd=0, padx=18, pady=12)
+        self.content.pack(fill="both", expand=True)
+        self.tabs = {name: tk.Frame(self.content, bd=0) for name in tab_names}
         self._tab_resumen()
         self._tab_sesiones()
         self._tab_indicadores()
@@ -110,6 +142,29 @@ class App(tk.Tk):
         self._tab_historial()
         self._tab_ajustes()
         self._tab_ayuda()
+        self._select_tab("Resumen")
+
+    def _select_tab(self, name):
+        """Switches the visible page and updates the custom navigation state."""
+        if name not in self.tabs:
+            return
+        for frame in self.tabs.values():
+            frame.pack_forget()
+        self.tabs[name].pack(fill="both", expand=True)
+        self.active_tab = name
+        self._update_nav_styles()
+
+    def _update_nav_styles(self):
+        if not hasattr(self, "nav_buttons"):
+            return
+        t = THEMES[self.current_theme]
+        for name, button in self.nav_buttons.items():
+            active = name == getattr(self, "active_tab", "Resumen")
+            button.configure(bg=t["selected"] if active else t["bg"],
+                             fg=t["selected_fg"] if active else t["tab_fg"],
+                             activebackground=t["selected"] if active else t["card_alt"],
+                             activeforeground=t["selected_fg"] if active else t["fg"])
+            self.nav_indicators[name].configure(bg=t["accent"] if active else t["bg"])
 
     def toggle_theme(self):
         self.current_theme = "oscuro" if self.current_theme == "claro" else "claro"
@@ -135,9 +190,11 @@ class App(tk.Tk):
         style.configure("Card.TLabel", background=t["card"], foreground=t["fg"])
         style.configure("Muted.TLabel", background=t["bg"], foreground=t["muted"])
         style.configure("Header.TLabel", background=t["card"], foreground=t["fg"], font=("Segoe UI", 18, "bold"))
-        style.configure("TButton", background=t["button"], foreground=t["button_fg"], padding=(8, 5), font=("Segoe UI", 9))
-        style.map("TButton", background=[("active", t["tab"])], foreground=[("active", t["button_fg"])])
-        style.configure("Primary.TButton", background=t["accent"], foreground=t["accent_fg"], padding=(10, 6), font=("Segoe UI", 9, "bold"))
+        style.configure("TButton", background=t["button"], foreground=t["button_fg"], padding=(11, 7),
+                        relief="flat", borderwidth=0, focusthickness=0, font=("Segoe UI", 9))
+        style.map("TButton", background=[("active", t["card_alt"])], foreground=[("active", t["button_fg"])])
+        style.configure("Primary.TButton", background=t["accent"], foreground=t["accent_fg"], padding=(13, 8),
+                        relief="flat", borderwidth=0, focusthickness=0, font=("Segoe UI", 9, "bold"))
         style.map("Primary.TButton", background=[("active", t["accent"])], foreground=[("active", t["accent_fg"])])
         style.configure("TNotebook", background=t["bg"], borderwidth=0, tabmargins=(2, 4, 2, 0))
         style.configure("TNotebook.Tab", background=t["tab"], foreground=t["tab_fg"], padding=(12, 6), font=("Segoe UI", 9))
@@ -153,22 +210,32 @@ class App(tk.Tk):
         style.configure("TLabelframe", background=t["bg"], foreground=t["fg"])
         style.configure("TLabelframe.Label", background=t["bg"], foreground=t["fg"], font=("Segoe UI", 9, "bold"))
         self.configure(bg=t["bg"])
+        for container in (getattr(self, "shell", None), getattr(self, "nav", None),
+                          getattr(self, "content", None)):
+            if container is not None:
+                container.configure(bg=t["bg"])
         self._paint_tk_widgets(self, t)
         # Restore deliberate card surfaces after the generic native-widget pass.
         if hasattr(self, "hero_frame"):
-            self.hero_frame.configure(bg=t["card"], highlightbackground=t["border"], highlightcolor=t["border"])
+            self.hero_frame.configure(bg=t["card"])
         if hasattr(self, "kpi_frame"):
             self.kpi_frame.configure(bg=t["bg"])
         for card in getattr(self, "kpi_cards", {}).values():
-            card["frame"].configure(bg=t["card"], highlightbackground=t["border"], highlightcolor=t["border"])
+            card["frame"].configure(bg=t["card"])
             card["num"].configure(bg=t["card"], fg=t["fg"])
             card["desc"].configure(bg=t["card"], fg=t["muted"])
         if hasattr(self, "findings_box") and self.findings_box.winfo_manager():
-            self.findings_box.configure(bg=t["alert"], highlightbackground=t["alert_border"], highlightcolor=t["alert_border"])
+            self.findings_box.configure(bg=t["alert"])
             self.lbl_findings_title.configure(bg=t["alert"], fg=t["alert_fg"])
             self.lbl_findings_text.configure(bg=t["alert"], fg=t["alert_fg"])
         if hasattr(self, "btn_theme"):
-            self.btn_theme.configure(text="🌙 Oscuro" if self.current_theme == "claro" else "☀️ Claro")
+            self.btn_theme.configure(text="☾  Oscuro" if self.current_theme == "claro" else "☀  Claro")
+        self._update_nav_styles()
+        if hasattr(self, "brand_title"):
+            self.brand_mark.configure(bg=t["accent"], fg=t["accent_fg"])
+            self.brand_title.configure(bg=t["bg"], fg=t["fg"])
+            self.brand_subtitle.configure(bg=t["bg"], fg=t["muted"])
+            self.status.configure(bg=t["card_alt"], fg=t["muted"])
         if self.res:
             self._draw_indicator(self.res["veredicto"]["nivel"], self.res["veredicto"]["puntos"])
         else:
@@ -184,6 +251,9 @@ class App(tk.Tk):
                     child.configure(bg=t["card"] if child == getattr(self, "canvas", None) else t["bg"])
                 elif isinstance(child, tk.Frame):
                     child.configure(bg=t["bg"])
+                elif isinstance(child, tk.Button):
+                    child.configure(bg=t["button"], fg=t["button_fg"], activebackground=t["card_alt"],
+                                    activeforeground=t["fg"], relief="flat", bd=0, highlightthickness=0)
                 elif isinstance(child, tk.Label):
                     child.configure(bg=t["bg"], fg=t["fg"])
                 elif isinstance(child, tk.Entry):
@@ -222,7 +292,7 @@ class App(tk.Tk):
     # ---------------------------------------------------------------- Resumen
     def _tab_resumen(self):
         f = self.tabs["Resumen"]
-        self.hero_frame = tk.Frame(f, padx=18, pady=12, relief="solid", bd=1)
+        self.hero_frame = tk.Frame(f, padx=22, pady=18, relief="flat", bd=0, highlightthickness=0)
         self.hero_frame.pack(fill="x", padx=14, pady=(12, 8))
         self.canvas = tk.Canvas(self.hero_frame, width=120, height=120, highlightthickness=0)
         self.canvas.pack(pady=(0, 2))
@@ -231,7 +301,7 @@ class App(tk.Tk):
         self.lbl_nivel.pack()
         self.lbl_texto = ttk.Label(self.hero_frame, text="", style="Card.TLabel", justify="center", wraplength=950)
         self.lbl_texto.pack(pady=4)
-        self.findings_box = tk.Frame(self.hero_frame, padx=12, pady=8, relief="solid", bd=1)
+        self.findings_box = tk.Frame(self.hero_frame, padx=14, pady=10, relief="flat", bd=0, highlightthickness=0)
         self.lbl_findings_title = tk.Label(self.findings_box, text="⚠  Pistas principales", font=("Segoe UI", 9, "bold"))
         self.lbl_findings_title.pack(anchor="w")
         self.lbl_findings_text = tk.Label(self.findings_box, text="", justify="left", wraplength=900, font=("Segoe UI", 9))
@@ -249,7 +319,7 @@ class App(tk.Tk):
         self.kpi_cards = {}
         for col, (key, value, label, icon) in enumerate(entries):
             self.kpi_frame.grid_columnconfigure(col, weight=1)
-            card = tk.Frame(self.kpi_frame, padx=8, pady=9, relief="solid", bd=1)
+            card = tk.Frame(self.kpi_frame, padx=10, pady=12, relief="flat", bd=0, highlightthickness=0)
             card.grid(row=0, column=col, padx=3, sticky="nsew")
             num = tk.Label(card, text=f"{icon} {value}", font=("Segoe UI", 14, "bold"))
             num.pack()
@@ -724,7 +794,7 @@ class App(tk.Tk):
     # ---------------------------------------------------------------- analisis en segundo plano
     def analizar(self):
         self.btn.config(state="disabled")
-        self.status.config(text="Analizando (puede tardar hasta un minuto)...")
+        self.status.config(text="●  Analizando…")
 
         def work():
             try:
@@ -742,15 +812,15 @@ class App(tk.Tk):
             while True:
                 k, v = self.q.get_nowait()
                 if k == "p":
-                    self.status.config(text=f"Hecho: {v}")
+                    self.status.config(text=f"●  Revisando: {v}")
                 elif k == "ok":
                     self.res = v
                     self.refresh()
                     self.btn.config(state="normal")
-                    self.status.config(text=f"Analisis terminado en {v['duracion_s']} s")
+                    self.status.config(text=f"●  Actualizado · {v['duracion_s']} s")
                 else:
                     self.btn.config(state="normal")
-                    self.status.config(text="Error en el analisis")
+                    self.status.config(text="●  Error en el análisis")
                     messagebox.showerror("CookieGuard", v)
         except queue.Empty:
             pass
@@ -842,7 +912,7 @@ class App(tk.Tk):
         if sel:
             g = next(g for g in self.res["grupos"] if g["id"] == sel[0])
             self.cb_serv.set(f"{g['nombre']}  [{g['id']}]")
-            self.nb.select(self.tabs["Acciones / Rotacion"])
+            self._select_tab("Acciones / Rotacion")
             self.nb_acc.select(0)
 
     def abrir_accion(self, kind):

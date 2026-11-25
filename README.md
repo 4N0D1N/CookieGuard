@@ -203,19 +203,20 @@ python -m cookieguard clipboard --limpiar
 <summary>🖥️ <b>Manual de la Interfaz Gráfica (GUI) - Explicación de Cada Botón</b></summary>
 <br>
 
-La interfaz gráfica (`python -m cookieguard.gui`) ofrece una consola de control intuitiva para gestionar la seguridad local:
+La interfaz gráfica (`python -m cookieguard.gui`) ofrece una consola de control para revisar la seguridad local:
 
 ### Apariencia de la GUI
 
-La ventana incluye dos temas integrados, sin instalar bibliotecas visuales adicionales:
+La versión **2.5.1** reemplaza la barra de pestañas clásica por navegación propia, plana y con estado activo visible; reorganiza la cabecera, reduce marcos duros y usa superficies más limpias. No añade bibliotecas visuales externas: sigue usando Tkinter, incluido en las builds oficiales.
 
-- **Claro · Fluent:** superficies claras, tarjetas de resumen y acento azul.
-- **Oscuro · SOC:** fondo oscuro de alto contraste y acento celeste.
-- **Cambiar al instante:** usa el botón de tema de la barra superior o el selector de la pestaña **Ajustes**. El cambio no reinicia la aplicación.
-- **Recordar preferencia:** la selección se guarda en la configuración local de CookieGuard (`tema`) y se restaura al volver a abrir la GUI.
-- **Qué cambia:** fondo, textos, pestañas, tablas, campos de texto, botones, tarjetas KPI y el indicador de nivel.
+- **Claro · Fluent:** fondo claro, tarjetas limpias, azul de acento y texto de alto contraste.
+- **Oscuro · SOC:** fondo azul carbón, tarjetas oscuras y acento celeste.
+- **Cambiar al instante:** usa el control de tema de la cabecera o el selector de **Ajustes**; no reinicia la aplicación.
+- **Recordar preferencia:** el tema elegido se guarda localmente (`tema`) y se restaura al abrir.
+- **Navegación:** cada sección mantiene las mismas funciones; la sección activa queda subrayada.
+- **Estado del análisis:** la cabecera distingue preparación, análisis en curso y última actualización.
 
-Los temas solo cambian la presentación; no alteran los análisis, permisos, vigilancia ni acciones de respuesta. La GUI depende de Tkinter, incluido con muchas instalaciones de Python, pero su disponibilidad visual debe comprobarse en cada sistema/paquete: el ejecutable puede seguir ofreciendo una interfaz clásica según la compilación de Tk.
+Los temas solo cambian la presentación; no alteran análisis, permisos, vigilancia ni acciones. La interfaz usa componentes nativos de Tkinter para conservar el funcionamiento sin instalar dependencias. Las capturas y el aspecto exacto pueden variar entre Windows y Linux por las diferencias del sistema de ventanas; la apariencia moderna se consigue con colores, espaciado y navegación propia, no con un tema visual de terceros.
 
 | Botón / Control | Función Exacta | Motivo de Seguridad |
 | :--- | :--- | :--- |

@@ -58,12 +58,18 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install PyInstaller
+      - name: Install PyInstaller and Pillow
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install pyinstaller pillow
           pip install -r requirements-forensics.txt
+
+      - name: Verify GUI architecture and visual snapshot on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          python tools/verificar_gui_windows.py
 
       - name: Compile Standalone Binary
         shell: bash
@@ -106,6 +112,14 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: release_bin/*
+
+      - name: Upload Windows GUI visual verification screenshot
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-gui-screenshot
+          path: artifacts/cookieguard_windows_gui.png
+          if-no-files-found: ignore
 
   publish-release:
     name: Publish Official GitHub Release
