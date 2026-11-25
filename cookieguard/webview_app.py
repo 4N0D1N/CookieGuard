@@ -1,29 +1,31 @@
-"""CookieGuard v2.6.1 · Consola de escritorio moderna basada en PyWebView."""
+"""CookieGuard v2.6.2 · Consola de escritorio moderna basada en PyWebView con servidor local robusto."""
 from __future__ import annotations
 
+import http.server
 import json
 import os
+import socketserver
 import sys
 import tempfile
 import threading
 import time
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from . import actions, browsers, canary_trap, engine, playbooks, reports, rescue_wizard
 from .common import VERSION, load_config, save_user_config
 
 
 class BridgeApi:
-    """Puente bidireccional seguro entre el frontend web y los modulos locales de CookieGuard."""
+    """Puente bidireccional entre el frontend web y los módulos locales de CookieGuard."""
 
     def __init__(self):
         self.last_res: Optional[Dict[str, Any]] = None
         self._lock = threading.Lock()
 
     def get_initial_data(self) -> Dict[str, Any]:
-        """Devuelve el estado inicial, configuracion y comprobacion de versiones previas."""
+        """Devuelve el estado inicial, configuración y comprobación de versiones previas."""
         cfg = load_config()
         try:
             canary_status = canary_trap.check_canary_traps()
@@ -40,8 +42,8 @@ class BridgeApi:
                             candidates.append(item)
             if candidates:
                 warning_old = (
-                    f"Atencion: Se han detectado copias o carpetas de versiones anteriores en este equipo "
-                    f"({', '.join(set(candidates))}). Asegurate de utilizar este acceso v{VERSION}."
+                    f"Atención: Se han detectado copias o carpetas de versiones anteriores en este equipo "
+                    f"({', '.join(set(candidates))}). Asegúrate de utilizar este acceso v{VERSION}."
                 )
         except Exception:
             pass
@@ -96,9 +98,9 @@ class BridgeApi:
                 reports.export_json(self.last_res, p)
             elif fmt == "csv":
                 reports.export_csv(self.last_res.get("grupos", []), p)
-            return {"ok": True, "path": str(p)}
+            return {"ok": True, "path": str(p), "formato": fmt}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": str(e), "formato": fmt}
 
     def create_incident_zip(self) -> Dict[str, Any]:
         """Genera el paquete ZIP de triaje forense sin volcar cookies sensibles."""
@@ -148,19 +150,99 @@ class BridgeApi:
                 from . import downloads_audit
                 return {"ok": True, "data": downloads_audit.audit_recent_downloads(hours=48)}
             elif tool_id == "playbook_data":
-                return {"ok": True, "servicios": playbooks.SERVICES_CATALOG}
+                return {"ok": True, "servicios": playbooks.PLAYBOOK_CATALOG}
             else:
                 return {"ok": False, "error": f"Herramienta desconocida: {tool_id}"}
         except Exception as e:
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
     def save_theme_preference(self, theme: str) -> bool:
-        """Guarda la preferencia visual en el archivo de configuracion local."""
+        """Guarda la preferencia visual en el archivo de configuración local."""
         try:
             save_user_config({"tema": theme})
             return True
         except Exception:
             return False
+
+
+class LocalDashboardServer:
+    """Servidor HTTP local exclusivo en 127.0.0.1 para comunicación infalible con el frontend."""
+
+    def __init__(self, api: BridgeApi, html_content: str):
+        self.api = api
+        self.html_content = html_content
+        self.server: Optional[socketserver.TCPServer] = None
+        self.port: int = 0
+        self._thread: Optional[threading.Thread] = None
+
+    def start(self) -> int:
+        api_ref = self.api
+        html_bytes = self.html_content.encode("utf-8")
+
+        class RequestHandler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, format, *args):
+                pass  # Registro silencioso
+
+            def do_GET(self):
+                if self.path in ("/", "/index.html"):
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(html_bytes)))
+                    self.end_headers()
+                    self.wfile.write(html_bytes)
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+
+            def do_POST(self):
+                if self.path.startswith("/api/"):
+                    method_name = self.path[len("/api/"):]
+                    content_len = int(self.headers.get("Content-Length", 0))
+                    body_bytes = self.rfile.read(content_len) if content_len > 0 else b"[]"
+                    try:
+                        args = json.loads(body_bytes.decode("utf-8")) if body_bytes else []
+                    except Exception:
+                        args = []
+
+                    func = getattr(api_ref, method_name, None)
+                    if func and callable(func) and not method_name.startswith("_"):
+                        try:
+                            if isinstance(args, list):
+                                res = func(*args)
+                            else:
+                                res = func(args)
+                            out_bytes = json.dumps(res, ensure_ascii=False).encode("utf-8")
+                            self.send_response(200)
+                            self.send_header("Content-Type", "application/json; charset=utf-8")
+                            self.send_header("Content-Length", str(len(out_bytes)))
+                            self.end_headers()
+                            self.wfile.write(out_bytes)
+                            return
+                        except Exception as e:
+                            err_bytes = json.dumps({"ok": False, "error": str(e)}).encode("utf-8")
+                            self.send_response(500)
+                            self.send_header("Content-Type", "application/json; charset=utf-8")
+                            self.send_header("Content-Length", str(len(err_bytes)))
+                            self.end_headers()
+                            self.wfile.write(err_bytes)
+                            return
+
+                self.send_response(404)
+                self.end_headers()
+
+        self.server = socketserver.TCPServer(("127.0.0.1", 0), RequestHandler)
+        self.port = self.server.server_address[1]
+        self._thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self._thread.start()
+        return self.port
+
+    def stop(self):
+        if self.server:
+            try:
+                self.server.shutdown()
+                self.server.server_close()
+            except Exception:
+                pass
 
 
 def get_dashboard_html() -> str:
@@ -655,7 +737,7 @@ tr:hover td { background: var(--bg-card-hover); }
       <div class="topbar-title">
         <h2 id="page-title" style="font-size:17px; font-weight:700;">Panel de Seguridad de Sesiones</h2>
       </div>
-      <div class="badge-version" id="txt-top-version" style="background:rgba(2,132,199,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600;">v2.6.1 · Oficial Activa</div>
+      <div class="badge-version" id="txt-top-version" style="background:rgba(2,132,199,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600;">v2.6.2 · Oficial Activa</div>
       <div class="system-status" id="system-badge" style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-muted);">
         <span class="badge-dot" style="background:var(--green); width:6px; height:6px; border-radius:50%;"></span>
         <span id="system-status-text">Protección Activa</span>
@@ -901,60 +983,76 @@ tr:hover td { background: var(--bg-card-hover); }
 </main>
 
 <script>
-// Global state
+// Estado global de la aplicación
 let appState = {
   theme: "dark",
   lastRes: null,
   activeFilter: "todos"
 };
 
-// Robust Promise-based bridge handler
-let bridgeReadyPromise = null;
-
-function waitForBridge() {
-  if (bridgeReadyPromise) return bridgeReadyPromise;
-  bridgeReadyPromise = new Promise((resolve) => {
-    if (window.pywebview && window.pywebview.api && Object.keys(window.pywebview.api).length > 0) {
-      return resolve(window.pywebview.api);
-    }
-    const onReady = () => {
-      window.removeEventListener("pywebviewready", onReady);
-      resolve(window.pywebview ? window.pywebview.api : null);
-    };
-    window.addEventListener("pywebviewready", onReady);
-
-    let attempts = 0;
-    const interval = setInterval(() => {
-      attempts++;
-      if (window.pywebview && window.pywebview.api && Object.keys(window.pywebview.api).length > 0) {
-        clearInterval(interval);
-        window.removeEventListener("pywebviewready", onReady);
-        resolve(window.pywebview.api);
-      } else if (attempts >= 40) {
-        clearInterval(interval);
-        window.removeEventListener("pywebviewready", onReady);
-        resolve(window.pywebview ? window.pywebview.api : null);
-      }
-    }, 100);
-  });
-  return bridgeReadyPromise;
+// Notificaciones Toast en pantalla
+function showToast(title, message, isError = false) {
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    container.style.cssText = "position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none;";
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement("div");
+  toast.style.cssText = `
+    background: ${isError ? '#7f1d1d' : '#0f172a'};
+    color: #f8fafc;
+    border: 1px solid ${isError ? '#ef4444' : '#38bdf8'};
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    border-radius: 8px;
+    padding: 12px 18px;
+    min-width: 280px;
+    max-width: 440px;
+    font-size: 13px;
+    pointer-events: auto;
+    animation: fadeIn 0.2s ease;
+  `;
+  toast.innerHTML = `
+    <div style="font-weight:700; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+      <span>${escapeHtml(title)}</span>
+      <span style="cursor:pointer; opacity:0.7; font-size:15px; margin-left:10px;" onclick="this.parentElement.parentElement.remove()">✕</span>
+    </div>
+    <div style="color:#cbd5e1; font-size:12px; line-height:1.4; word-break:break-word;">${escapeHtml(message)}</div>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => { if (toast.parentElement) toast.remove(); }, 5000);
 }
 
+// Invocador universal de API: HTTP local primero + pywebview bridge de respaldo
 async function callApi(method, ...args) {
-  const api = await waitForBridge();
-  if (api && typeof api[method] === "function") {
-    try {
-      return await api[method](...args);
-    } catch (err) {
-      console.error(`[CookieGuard Bridge] Error en ${method}:`, err);
-      return null;
+  // 1. Intento por HTTP local
+  try {
+    const res = await fetch(`/api/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args)
+    });
+    if (res.ok) {
+      return await res.json();
     }
+  } catch (err) {
+    // Modo offline sin HTTP (ej. file:// directo)
   }
-  console.warn(`[CookieGuard Bridge] Metodo '${method}' no disponible.`);
+
+  // 2. Respaldo por objeto pywebview.api
+  try {
+    if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[method] === "function") {
+      return await window.pywebview.api[method](...args);
+    }
+  } catch (err) {
+    console.error(`[Bridge Error] en ${method}:`, err);
+  }
+
   return null;
 }
 
-// Navigation
+// Navegación por pestañas
 function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
   document.querySelectorAll(".view-panel").forEach(panel => panel.classList.remove("active"));
@@ -975,14 +1073,16 @@ function switchTab(tabId) {
     herramientas: "Herramientas de Auditoría & Rescate",
     ajustes: "Configuración Local"
   };
-  document.getElementById("page-title").textContent = titles[tabId] || "CookieGuard";
+  const titleElem = document.getElementById("page-title");
+  if (titleElem && titles[tabId]) titleElem.textContent = titles[tabId];
 }
 
-// Theme
+// Control de temas visuales
 function setTheme(t) {
   appState.theme = t === "claro" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", appState.theme);
-  document.getElementById("theme-icon").textContent = appState.theme === "dark" ? "☾" : "☼";
+  const themeIcon = document.getElementById("theme-icon");
+  if (themeIcon) themeIcon.textContent = appState.theme === "dark" ? "☾" : "☼";
   callApi("save_theme_preference", t);
 }
 
@@ -990,34 +1090,40 @@ function toggleTheme() {
   setTheme(appState.theme === "dark" ? "claro" : "oscuro");
 }
 
-// Scan action
+// Acción de análisis
 async function triggerScan() {
   const btn = document.getElementById("btn-scan");
   const icon = document.getElementById("scan-icon");
   const label = document.getElementById("scan-label");
   const sysStatus = document.getElementById("system-status-text");
 
-  btn.style.pointerEvents = "none";
-  icon.innerHTML = '<span class="spinner"></span>';
-  label.textContent = "Analizando...";
-  sysStatus.textContent = "Escaneando sesiones...";
+  if (btn) btn.style.pointerEvents = "none";
+  if (icon) icon.innerHTML = '<span class="spinner"></span>';
+  if (label) label.textContent = "Analizando...";
+  if (sysStatus) sysStatus.textContent = "Escaneando sesiones locales...";
 
   try {
     const res = await callApi("run_scan");
     if (res) {
       updateDashboardWithData(res);
+      const totalC = (res.estadisticas && (res.estadisticas.cookies_sesion || res.estadisticas.cookies_totales)) || 0;
+      const totalS = (res.grupos && res.grupos.length) || 0;
+      showToast("Auditoría Finalizada", `${totalS} servicios y ${totalC} cookies auditadas.`);
+    } else {
+      showToast("Aviso", "El análisis finalizó sin hallazgos o no se pudo comunicar con el motor.", true);
     }
   } catch (e) {
     console.error("Scan error:", e);
+    showToast("Error de análisis", String(e), true);
   } finally {
-    btn.style.pointerEvents = "auto";
-    icon.innerHTML = "⌕";
-    label.textContent = "Analizar ahora";
-    sysStatus.textContent = "Protección Activa";
+    if (btn) btn.style.pointerEvents = "auto";
+    if (icon) icon.innerHTML = "⌕";
+    if (label) label.textContent = "Analizar ahora";
+    if (sysStatus) sysStatus.textContent = "Protección Activa";
   }
 }
 
-// Update dashboard
+// Actualización de métricas en dashboard
 function updateDashboardWithData(res) {
   appState.lastRes = res;
   const v = res.veredicto || {};
@@ -1026,11 +1132,16 @@ function updateDashboardWithData(res) {
   const ind = res.indicadores || [];
 
   // KPIs
-  document.getElementById("kpi-cookies").textContent = stats.total_cookies || 0;
-  document.getElementById("kpi-servicios").textContent = stats.servicios_unicos || grupos.length;
-  document.getElementById("kpi-criticos").textContent = stats.servicios_criticos || 0;
-  document.getElementById("kpi-perfiles").textContent = stats.total_perfiles || 0;
-  document.getElementById("kpi-alertas").textContent = stats.alertas_activas || 0;
+  const totalCookies = stats.cookies_sesion || stats.cookies_totales || 0;
+  const totalPerfiles = stats.perfiles || 0;
+  const serviciosCriticos = grupos.filter(g => g.critico).length;
+  const alertasActivas = (ind.filter(i => i.estado === "alerta").length) || (v.indicadores_alerta || 0);
+
+  document.getElementById("kpi-cookies").textContent = totalCookies;
+  document.getElementById("kpi-servicios").textContent = grupos.length;
+  document.getElementById("kpi-criticos").textContent = serviciosCriticos;
+  document.getElementById("kpi-perfiles").textContent = totalPerfiles;
+  document.getElementById("kpi-alertas").textContent = alertasActivas;
 
   // Gauge Score
   const pts = v.puntos || 0;
@@ -1056,7 +1167,7 @@ function updateDashboardWithData(res) {
     ? v.principales.join(" · ")
     : "Sin indicios de exfiltración en frío ni manipulación de DPAPI.";
 
-  // Render tables
+  // Tablas
   renderSessionTables(grupos);
   renderIndicators(ind);
   renderExtensions(res.extensiones || []);
@@ -1072,17 +1183,23 @@ function renderSessionTables(grupos) {
     return;
   }
 
-  // Preview table (top 5 critical)
+  // Top 5 críticos en vista previa
   const sortedCrit = [...grupos].sort((a,b) => (b.critico ? 1 : 0) - (a.critico ? 1 : 0));
-  pBody.innerHTML = sortedCrit.slice(0, 5).map(g => `
-    <tr>
-      <td><strong>${escapeHtml(g.nombre || g.dominio)}</strong><br><small style="color:var(--text-faint)">${escapeHtml(g.dominio)}</small></td>
-      <td>${escapeHtml(g.navegador || '-')} (${escapeHtml(g.perfil || 'Default')})</td>
-      <td>${g.total_cookies || 0}</td>
-      <td>${g.critico ? '<span class="badge badge-crit">Crítico</span>' : '<span class="badge badge-ok">Normal</span>'}</td>
-      <td><button class="btn btn-subtle" style="padding:4px 8px; font-size:11px;" onclick="openRevoke('${escapeHtml(g.dominio)}')">Revocar</button></td>
-    </tr>
-  `).join("");
+  pBody.innerHTML = sortedCrit.slice(0, 5).map(g => {
+    const navStr = (g.navegadores && g.navegadores.length) ? g.navegadores.join(", ") : (g.navegador || '-');
+    const perfStr = (g.perfiles && g.perfiles.length) ? g.perfiles.join(", ") : (g.perfil || 'Default');
+    const domStr = (g.dominios && g.dominios.length) ? g.dominios[0] : (g.dominio || g.id);
+    const cookiesCount = g.cookies || g.total_cookies || 0;
+    return `
+      <tr>
+        <td><strong>${escapeHtml(g.nombre || domStr)}</strong><br><small style="color:var(--text-faint)">${escapeHtml(domStr)}</small></td>
+        <td>${escapeHtml(navStr)} (${escapeHtml(perfStr)})</td>
+        <td><strong>${cookiesCount}</strong></td>
+        <td>${g.critico ? '<span class="badge badge-crit">Crítico</span>' : '<span class="badge badge-ok">Normal</span>'}</td>
+        <td><button class="btn btn-subtle" style="padding:4px 8px; font-size:11px;" onclick="openRevoke('${escapeHtml(domStr)}')">Revocar</button></td>
+      </tr>
+    `;
+  }).join("");
 
   renderFilteredSessions(grupos);
 }
@@ -1093,7 +1210,8 @@ function renderFilteredSessions(grupos) {
   const filter = appState.activeFilter;
 
   const filtered = grupos.filter(g => {
-    const textMatch = (g.nombre || "").toLowerCase().includes(search) || (g.dominio || "").toLowerCase().includes(search);
+    const domStr = (g.dominios && g.dominios.length) ? g.dominios[0] : (g.dominio || g.id || "");
+    const textMatch = (g.nombre || "").toLowerCase().includes(search) || domStr.toLowerCase().includes(search);
     if (!textMatch) return false;
     if (filter === "criticos") return g.critico;
     if (filter === "zombie") return g.zombie;
@@ -1102,21 +1220,27 @@ function renderFilteredSessions(grupos) {
   });
 
   if (!filtered.length) {
-    fullBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color:var(--text-faint);">No hay sesiones que coincidan con la búsqueda.</td></tr>';
+    fullBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color:var(--text-faint);">No hay sesiones que coincidan con el filtro.</td></tr>';
     return;
   }
 
-  fullBody.innerHTML = filtered.map(g => `
-    <tr>
-      <td><strong>${escapeHtml(g.nombre || g.dominio)}</strong><br><small style="color:var(--text-faint)">${escapeHtml(g.dominio)}</small></td>
-      <td><span class="badge badge-muted">${escapeHtml(g.categoria || 'Otros')}</span></td>
-      <td>${escapeHtml(g.navegador || '-')}</td>
-      <td>${escapeHtml(g.perfil || 'Default')}</td>
-      <td><strong>${g.total_cookies || 0}</strong></td>
-      <td>${escapeHtml(g.caduca_max || '-')}</td>
-      <td><button class="btn btn-subtle" style="padding:4px 8px; font-size:11px;" onclick="openRevoke('${escapeHtml(g.dominio)}')">Revocar</button></td>
-    </tr>
-  `).join("");
+  fullBody.innerHTML = filtered.map(g => {
+    const navStr = (g.navegadores && g.navegadores.length) ? g.navegadores.join(", ") : (g.navegador || '-');
+    const perfStr = (g.perfiles && g.perfiles.length) ? g.perfiles.join(", ") : (g.perfil || 'Default');
+    const domStr = (g.dominios && g.dominios.length) ? g.dominios[0] : (g.dominio || g.id);
+    const cookiesCount = g.cookies || g.total_cookies || 0;
+    return `
+      <tr>
+        <td><strong>${escapeHtml(g.nombre || domStr)}</strong><br><small style="color:var(--text-faint)">${escapeHtml(domStr)}</small></td>
+        <td><span class="badge badge-muted">${escapeHtml(g.categoria || 'Otros')}</span></td>
+        <td>${escapeHtml(navStr)}</td>
+        <td>${escapeHtml(perfStr)}</td>
+        <td><strong>${cookiesCount}</strong></td>
+        <td>${escapeHtml(g.estado || g.caduca_max || '-')}</td>
+        <td><button class="btn btn-subtle" style="padding:4px 8px; font-size:11px;" onclick="openRevoke('${escapeHtml(domStr)}')">Revocar</button></td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function filterSessions() {
@@ -1139,7 +1263,7 @@ function renderIndicators(ind) {
     return;
   }
   container.innerHTML = ind.map(i => `
-    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <div>
         <div style="font-weight:600; font-size:13.5px; margin-bottom:4px;">${escapeHtml(i.nombre || i.id)}</div>
         <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(i.descripcion || '-')}</div>
@@ -1170,43 +1294,50 @@ function renderExtensions(ext) {
 
 // Canary
 async function triggerDeployCanary() {
+  showToast("Canary", "Desplegando / Rearmando trampas señuelo...");
   const res = await callApi("deploy_canary");
   updateCanaryDetails(res);
+  showToast("Canary Armado", `${res ? res.total_trampas : 0} trampas armadas en perfiles de navegador.`);
 }
 
 async function triggerCheckCanary() {
+  showToast("Canary", "Comprobando estado de integridad de señuelos...");
   const res = await callApi("check_canary");
   updateCanaryDetails(res);
+  showToast("Canary Verificado", res && res.alerta_activa ? "¡Alerta de acceso detectada!" : "Todos los señuelos están intactos.");
 }
 
 function updateCanaryDetails(status) {
   if (!status) return;
   document.getElementById("kpi-canary").textContent = status.total_trampas || 0;
   const det = document.getElementById("canary-status-details");
-  det.innerHTML = `
-    <p><strong>Total trampas armadas:</strong> ${status.total_trampas || 0}</p>
-    <p><strong>Intactas:</strong> ${status.intactas || 0} | <strong>Activadas:</strong> ${status.activadas || 0}</p>
-    <p><strong>Estado:</strong> ${status.alerta_activa ? '<span class="badge badge-crit">¡ALERTA DE ACCESO DETECTADO!</span>' : '<span class="badge badge-ok">SEÑUELOS INTACTOS</span>'}</p>
-  `;
+  if (det) {
+    det.innerHTML = `
+      <p><strong>Total trampas armadas:</strong> ${status.total_trampas || 0}</p>
+      <p><strong>Intactas:</strong> ${status.intactas || 0} | <strong>Activadas:</strong> ${status.activadas || 0}</p>
+      <p><strong>Estado:</strong> ${status.alerta_activa ? '<span class="badge badge-crit">¡ALERTA DE ACCESO DETECTADO!</span>' : '<span class="badge badge-ok">SEÑUELOS INTACTOS</span>'}</p>
+    `;
+  }
 }
 
 // Playbooks & Actions
 async function loadPlaybooks() {
   const res = await callApi("run_specialized_tool", "playbook_data");
   const container = document.getElementById("playbooks-container");
-  if (res && res.servicios) {
-    container.innerHTML = Object.entries(res.servicios).map(([k, s]) => `
+  if (container && res && res.servicios && Array.isArray(res.servicios)) {
+    container.innerHTML = res.servicios.map(s => `
       <div class="playbook-card">
         <div>
           <div class="pb-header">
-            <span class="pb-title">${escapeHtml(s.nombre || k)}</span>
+            <span class="pb-title">${escapeHtml(s.nombre || s.id)}</span>
             <span class="badge badge-muted">${escapeHtml(s.categoria || 'Servicio')}</span>
           </div>
-          <p style="font-size:11.5px; color:var(--text-muted); line-height:1.4;">${escapeHtml(s.descripcion || '')}</p>
+          <p style="font-size:11.5px; color:var(--text-muted); line-height:1.4;">${escapeHtml((s.pasos && s.pasos[0]) || s.categoria || '')}</p>
         </div>
         <div class="pb-actions">
-          ${s.url_cierre ? `<a class="pb-btn" href="#" onclick="openExternalUrl('${s.url_cierre}'); return false;"><span>🚪 Cerrar sesiones activas</span><span>&rarr;</span></a>` : ''}
-          ${s.url_clave ? `<a class="pb-btn" href="#" onclick="openExternalUrl('${s.url_clave}'); return false;"><span>🔑 Rotar contraseña</span><span>&rarr;</span></a>` : ''}
+          ${s.url_sesiones ? `<button class="pb-btn" onclick="openExternalUrl('${s.url_sesiones}'); return false;"><span>🚪 Cerrar sesiones</span><span>&rarr;</span></button>` : ''}
+          ${s.url_password ? `<button class="pb-btn" onclick="openExternalUrl('${s.url_password}'); return false;"><span>🔑 Cambiar clave</span><span>&rarr;</span></button>` : ''}
+          ${s.url_oauth ? `<button class="pb-btn" onclick="openExternalUrl('${s.url_oauth}'); return false;"><span>🛡️ Permisos OAuth</span><span>&rarr;</span></button>` : ''}
         </div>
       </div>
     `).join("");
@@ -1214,47 +1345,63 @@ async function loadPlaybooks() {
 }
 
 function openExternalUrl(url) {
-  callApi("open_url", url);
+  if (url) {
+    showToast("Navegador Externo", `Abriendo enlace oficial: ${url}`);
+    callApi("open_url", url);
+  }
 }
 
 function openRevoke(dominio) {
   switchTab("playbooks");
 }
 
-// Tool runner
+// Ejecutor de herramientas forenses
 async function execTool(toolId) {
   const out = document.getElementById("terminal-output");
-  out.textContent = `[CookieGuard] Ejecutando '${toolId}' en el sistema local...`;
+  if (out) out.textContent = `[CookieGuard] Ejecutando '${toolId}' en el sistema local...`;
+  showToast("Herramienta Forense", `Ejecutando ${toolId}...`);
   const res = await callApi("run_specialized_tool", toolId);
   if (res) {
-    if (res.cli_text) {
-      out.textContent = res.cli_text;
-    } else {
-      out.textContent = JSON.stringify(res.data || res, null, 2);
+    if (out) {
+      if (res.cli_text) {
+        out.textContent = res.cli_text;
+      } else {
+        out.textContent = JSON.stringify(res.data || res, null, 2);
+      }
     }
+    showToast("Ejecución Finalizada", `Herramienta '${toolId}' completada.`);
   } else {
-    out.textContent = `[Error] No se pudo ejecutar la herramienta ${toolId}.`;
+    if (out) out.textContent = `[Error] No se pudo ejecutar la herramienta ${toolId}.`;
+    showToast("Error", `No se pudo ejecutar ${toolId}`, true);
   }
 }
 
 async function triggerRescuePlan() {
   const out = document.getElementById("terminal-output");
-  out.textContent = "[CookieGuard] Ejecutando plan de rescate Zero-Trust (sin cerrar navegadores)...";
+  if (out) out.textContent = "[CookieGuard] Ejecutando plan de rescate Zero-Trust (sin cerrar navegadores)...";
+  showToast("Plan de Rescate", "Iniciando aislamiento seguro...");
   const res = await callApi("run_rescue_plan", false);
-  out.textContent = JSON.stringify(res, null, 2);
+  if (out) out.textContent = JSON.stringify(res, null, 2);
+  showToast("Plan de Rescate Completado", "Reporte de contención generado.");
 }
 
 async function triggerIncidentZip() {
+  showToast("Modo Incidente", "Generando paquete ZIP de triaje forense...");
   const res = await callApi("create_incident_zip");
   if (res && res.path) {
-    alert("Paquete de incidente forense ZIP generado con éxito:\n" + res.path);
+    showToast("ZIP Forense Creado", `Archivo generado: ${res.path}`);
+  } else {
+    showToast("Error", "No se pudo crear el ZIP de incidente", true);
   }
 }
 
 async function exportData(fmt) {
+  showToast("Exportando Reporte", `Generando archivo ${fmt.toUpperCase()}...`);
   const res = await callApi("export_report", fmt);
   if (res && res.path) {
-    alert("Reporte exportado con éxito:\n" + res.path);
+    showToast("Exportación Exitosa", `Archivo guardado en: ${res.path}`);
+  } else {
+    showToast("Error de Exportación", (res && res.error) || "Fallo al generar archivo", true);
   }
 }
 
@@ -1263,12 +1410,13 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Init on load
+// Inicialización automática
 window.addEventListener("DOMContentLoaded", async () => {
   const init = await callApi("get_initial_data");
   if (init) {
     if (init.version) {
-      document.getElementById("txt-version").textContent = "v" + init.version;
+      const vElem = document.getElementById("txt-version");
+      if (vElem) vElem.textContent = "v" + init.version;
       const vBadge = document.getElementById("txt-top-version");
       if (vBadge) vBadge.textContent = "v" + init.version + " · Oficial Activa";
     }
@@ -1279,7 +1427,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       if (banner) {
         banner.innerHTML = `
           <div class="alert-banner" style="background:#78350f; color:#fef3c7; padding:10px 24px; display:flex; align-items:center; justify-content:space-between; font-size:12px; border-bottom:1px solid #92400e;">
-            <div>⚠️ <strong>Aviso de version:</strong> ${escapeHtml(init.warning_old)}</div>
+            <div>⚠️ <strong>Aviso de versión:</strong> ${escapeHtml(init.warning_old)}</div>
             <button onclick="this.parentElement.remove()" style="background:none; border:none; color:#fef3c7; cursor:pointer; font-size:16px; padding:0 6px;">✕</button>
           </div>
         `;
@@ -1287,7 +1435,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
   loadPlaybooks();
-  // Disparar escaneo automatico con feedback inmediato
+  // Disparar escaneo automático inicial con animación en vivo
   triggerScan();
 });
 </script>
@@ -1295,30 +1443,39 @@ window.addEventListener("DOMContentLoaded", async () => {
 </html>
 """
 
-
 def launch(debug: bool = False) -> int:
-    """Lanza la ventana de escritorio nativa de CookieGuard con PyWebView."""
-    try:
-        import webview
-    except ImportError as e:
-        print(f"[!] pywebview no está instalado: {e}", file=sys.stderr)
-        return 1
-
+    """Lanza la ventana de escritorio nativa de CookieGuard con PyWebView respaldada por servidor local."""
     api = BridgeApi()
     html_content = get_dashboard_html()
 
-    window = webview.create_window(
-        title=f"CookieGuard {VERSION} · Session Security Dashboard",
-        html=html_content,
-        js_api=api,
-        width=1240,
-        height=820,
-        min_size=(960, 640),
-        background_color="#080c14"
-    )
+    server = LocalDashboardServer(api, html_content)
+    port = server.start()
+    local_url = f"http://127.0.0.1:{port}/"
 
-    webview.start(debug=debug)
-    return 0
+    try:
+        import webview
+        window = webview.create_window(
+            title=f"CookieGuard {VERSION} · Session Security Dashboard",
+            url=local_url,
+            js_api=api,
+            width=1240,
+            height=820,
+            min_size=(960, 640),
+            background_color="#080c14"
+        )
+        webview.start(debug=debug)
+        return 0
+    except Exception as e:
+        print(f"[!] Fallback: abriendo dashboard local en navegador: {e}", file=sys.stderr)
+        webbrowser.open(local_url)
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+        return 0
+    finally:
+        server.stop()
 
 
 if __name__ == "__main__":

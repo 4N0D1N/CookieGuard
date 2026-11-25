@@ -203,9 +203,14 @@ python -m cookieguard clipboard --limpiar
 <summary>🖥️ <b>Manual de la Interfaz Gráfica (GUI) - Explicación de Cada Botón</b></summary>
 <br>
 
-A partir de la versión **2.6.1**, CookieGuard incorpora una consola de escritorio de última generación impulsada por **PyWebView** (`CookieGuard.exe` o `python -m cookieguard`):
+A partir de la versión **2.6.2**, CookieGuard incorpora una consola de escritorio de última generación impulsada por **PyWebView** (`CookieGuard.exe` o `python -m cookieguard`):
 
-### Consola de Escritorio Moderna (PyWebView · Cyber SOC / Fluent)
+### Consola de Escritorio Moderna (PyWebView v2.6.2 · Servidor Local + Cyber SOC / Fluent)
+
+La versión **v2.6.2** incorpora una arquitectura de **doble enlace ultra-robusta**:
+- **Servidor Local Loopback (127.0.0.1):** Un microservidor HTTP interno que atiende las solicitudes de la interfaz instantáneamente vía `fetch` asíncrono con cero dependencias externas. Esto garantiza que todos los botones (`Analizar ahora`, `Exportar`, `Canary`, `Playbooks`, `Herramientas`) respondan de inmediato sin retrasos de eventos IPC de WebView2.
+- **Notificaciones Toast en Pantalla:** Cada acción (generar reporte, crear ZIP de incidente, ejecutar persistencia o rearmar trampas) muestra una alerta visual emergente con el resultado y la ruta exacta de los archivos generados.
+- **Fallback Automático en Navegador:** Si el entorno de ejecución carece del runtime WebView2, CookieGuard abre el panel interactivo en el navegador por defecto del sistema manteniendo el 100% de la funcionalidad interactiva.
 
 La nueva interfaz ejecuta una consola de ciberseguridad interactiva dentro de una ventana de escritorio nativa sin dependencias externas en el equipo del usuario (utiliza el runtime de WebView2 de Windows 10/11):
 - **Barra Lateral de Navegación Rápida:** Acceso con 1 clic a Resumen, Sesiones Activas, Indicadores MITRE, Trampas Canary, Extensiones, Playbooks de Revocación y Herramientas.

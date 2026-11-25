@@ -1,10 +1,12 @@
 """Pruebas unitarias para la interfaz de escritorio moderna con PyWebView."""
+import json
 import unittest
+import urllib.request
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
 from cookieguard.common import VERSION
-from cookieguard.webview_app import BridgeApi, get_dashboard_html
+from cookieguard.webview_app import BridgeApi, LocalDashboardServer, get_dashboard_html
 
 
 class TestWebviewApp(unittest.TestCase):
@@ -48,13 +50,18 @@ class TestWebviewApp(unittest.TestCase):
         self.assertTrue(res.get("ok"))
         self.assertIn("data", res)
 
+    def test_run_specialized_tool_playbooks(self):
+        res = self.api.run_specialized_tool("playbook_data")
+        self.assertTrue(res.get("ok"))
+        self.assertIn("servicios", res)
+        self.assertGreater(len(res["servicios"]), 0)
+
     def test_run_specialized_tool_unknown(self):
         res = self.api.run_specialized_tool("herramienta_inexistente")
         self.assertFalse(res.get("ok"))
         self.assertIn("error", res)
 
     def test_open_url_safety(self):
-        # Enlaces no válidos no deben abrir navegador
         self.assertFalse(self.api.open_url("javascript:alert(1)"))
         self.assertFalse(self.api.open_url("file:///etc/passwd"))
 
@@ -71,6 +78,29 @@ class TestWebviewApp(unittest.TestCase):
         res = self.api.run_scan()
         self.assertEqual(res["veredicto"]["nivel"], "verde")
         self.assertEqual(self.api.last_res, res)
+
+    def test_local_server_lifecycle_and_api(self):
+        html = get_dashboard_html()
+        server = LocalDashboardServer(self.api, html)
+        port = server.start()
+        self.assertGreater(port, 1024)
+        base = f"http://127.0.0.1:{port}"
+
+        # Test GET /
+        req = urllib.request.Request(f"{base}/")
+        res_text = urllib.request.urlopen(req).read().decode("utf-8")
+        self.assertIn("CookieGuard", res_text)
+
+        # Test POST /api/get_initial_data
+        req = urllib.request.Request(
+            f"{base}/api/get_initial_data",
+            data=b"[]",
+            headers={"Content-Type": "application/json"}
+        )
+        init_data = json.loads(urllib.request.urlopen(req).read().decode("utf-8"))
+        self.assertEqual(init_data.get("version"), VERSION)
+
+        server.stop()
 
 
 if __name__ == "__main__":
