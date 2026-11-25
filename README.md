@@ -203,7 +203,7 @@ python -m cookieguard clipboard --limpiar
 <summary>🖥️ <b>Manual de la Interfaz Gráfica (GUI) - Explicación de Cada Botón</b></summary>
 <br>
 
-A partir de la versión **2.6.0**, CookieGuard incorpora una consola de escritorio de última generación impulsada por **PyWebView** (`CookieGuard.exe` o `python -m cookieguard`):
+A partir de la versión **2.6.1**, CookieGuard incorpora una consola de escritorio de última generación impulsada por **PyWebView** (`CookieGuard.exe` o `python -m cookieguard`):
 
 ### Consola de Escritorio Moderna (PyWebView · Cyber SOC / Fluent)
 

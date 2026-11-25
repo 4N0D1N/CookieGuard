@@ -46,7 +46,29 @@ def _print_summary(res):
     print(f"    {v['aviso']}")
 
 
+def check_and_warn_older_copies():
+    """Detecta si hay versiones anteriores en el entorno local y muestra advertencia."""
+    try:
+        import os
+        from .common import VERSION
+        current_dir = os.getcwd()
+        older = []
+        for item in os.listdir(current_dir):
+            if ("CookieGuard" in item or "CG-" in item) and any(v in item for v in ["2.4", "2.5.0", "2.5.1"]):
+                older.append(item)
+        if older:
+            print("[!] AVISO DE VERSIÓN: Se han detectado copias o carpetas de versiones anteriores en este directorio:")
+            for c in older:
+                print(f"    - {c}")
+            print(f"    -> Estás ejecutando CookieGuard v{VERSION}. Asegúrate de no abrir versiones previas.\n")
+    except Exception:
+        pass
+
 def main(argv=None):
+    from .common import VERSION
+    exe_desc = "Ejecutable autónomo" if getattr(sys, 'frozen', False) else "Módulo Python"
+    print(f"🛡️  CookieGuard v{VERSION} ({exe_desc})")
+    check_and_warn_older_copies()
     ap = argparse.ArgumentParser(prog="cookieguard", description="CookieGuard: auditor de cookies de sesion")
     sub = ap.add_subparsers(dest="cmd")
     a = sub.add_parser("analizar", help="Analiza y abre el informe")

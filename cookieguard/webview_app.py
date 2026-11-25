@@ -1,9 +1,4 @@
-"""Interfaz de escritorio nativa moderna con PyWebView para CookieGuard.
-
-Proporciona una consola de seguridad visual tipo Cyber SOC / Fluent con
-paneles interactivos, gráficos de riesgo SVG, búsqueda y filtrado de sesiones en vivo,
-despliegue de trampas Canary y playbooks de revocación rápida con 1 clic.
-"""
+"""CookieGuard v2.6.1 · Consola de escritorio moderna basada en PyWebView."""
 from __future__ import annotations
 
 import json
@@ -16,34 +11,52 @@ import webbrowser
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from . import actions, browsers, canary_trap, common, engine, playbooks, reports, rescue_wizard
+from . import actions, browsers, canary_trap, engine, playbooks, reports, rescue_wizard
 from .common import VERSION, load_config, save_user_config
 
 
 class BridgeApi:
-    """Puente bidireccional entre la interfaz web y las capacidades locales de CookieGuard."""
+    """Puente bidireccional seguro entre el frontend web y los modulos locales de CookieGuard."""
 
     def __init__(self):
         self.last_res: Optional[Dict[str, Any]] = None
         self._lock = threading.Lock()
 
     def get_initial_data(self) -> Dict[str, Any]:
-        """Devuelve el estado inicial de la aplicación, configuración y trampas Canary."""
+        """Devuelve el estado inicial, configuracion y comprobacion de versiones previas."""
         cfg = load_config()
         try:
             canary_status = canary_trap.check_canary_traps()
         except Exception as e:
             canary_status = {"error": str(e), "total_trampas": 0, "alerta_activa": False}
 
+        warning_old = None
+        try:
+            candidates = []
+            for d in [os.getcwd(), os.path.expanduser("~/Desktop")]:
+                if os.path.isdir(d):
+                    for item in os.listdir(d):
+                        if any(v in item for v in ["2.4", "2.5.0", "2.5.1", "CookieGuard-App", "CookieGuard-v2.5"]):
+                            candidates.append(item)
+            if candidates:
+                warning_old = (
+                    f"Atencion: Se han detectado copias o carpetas de versiones anteriores en este equipo "
+                    f"({', '.join(set(candidates))}). Asegurate de utilizar este acceso v{VERSION}."
+                )
+        except Exception:
+            pass
+
         return {
             "version": VERSION,
             "theme": cfg.get("tema", "oscuro"),
             "canary": canary_status,
-            "last_res": self.last_res
+            "last_res": self.last_res,
+            "warning_old": warning_old,
+            "binary_path": sys.executable if getattr(sys, "frozen", False) else os.path.abspath(__file__)
         }
 
     def run_scan(self) -> Dict[str, Any]:
-        """Ejecuta un escaneo completo de sesiones y almacena los reportes locales."""
+        """Ejecuta un escaneo completo de sesiones y actualiza reportes locales."""
         with self._lock:
             profiles = browsers.discover()
             res = engine.run_analysis(profiles)
@@ -55,16 +68,16 @@ class BridgeApi:
             return res
 
     def deploy_canary(self) -> Dict[str, Any]:
-        """Despliega trampas señuelo Canary en los perfiles de navegadores detectados."""
+        """Despliega trampas señuelo Canary en los navegadores."""
         canary_trap.deploy_canary_traps()
         return canary_trap.check_canary_traps()
 
     def check_canary(self) -> Dict[str, Any]:
-        """Verifica la integridad de las trampas Canary desplegadas."""
+        """Verifica la integridad de las trampas señuelo."""
         return canary_trap.check_canary_traps()
 
     def open_url(self, url: str) -> bool:
-        """Abre de forma segura una URL oficial en el navegador predeterminado del sistema."""
+        """Abre de forma segura una URL oficial en el navegador predeterminado."""
         if not url or not (url.startswith("https://") or url.startswith("http://")):
             return False
         return webbrowser.open(url)
@@ -88,7 +101,7 @@ class BridgeApi:
             return {"ok": False, "error": str(e)}
 
     def create_incident_zip(self) -> Dict[str, Any]:
-        """Genera el paquete ZIP de triaje forense sin valores de cookies."""
+        """Genera el paquete ZIP de triaje forense sin volcar cookies sensibles."""
         if not self.last_res:
             self.run_scan()
         try:
@@ -98,14 +111,14 @@ class BridgeApi:
             return {"ok": False, "error": str(e)}
 
     def run_rescue_plan(self, kill_browsers: bool = False) -> Dict[str, Any]:
-        """Ejecuta el asistente de rescate Zero-Trust."""
+        """Ejecuta el asistente de rescate de emergencia."""
         t_dir = Path(tempfile.gettempdir())
         return rescue_wizard.run_rescue_plan(
             auto=True, killswitch=False, kill_browsers=kill_browsers, output_dir=t_dir
         )
 
     def run_specialized_tool(self, tool_id: str) -> Dict[str, Any]:
-        """Ejecuta una herramienta especializada de CookieGuard y devuelve su resultado."""
+        """Ejecuta herramientas especializadas locales bajo demanda."""
         try:
             if tool_id == "persistence":
                 from . import persistence_audit
@@ -142,7 +155,7 @@ class BridgeApi:
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
     def save_theme_preference(self, theme: str) -> bool:
-        """Persiste el tema seleccionado por el usuario."""
+        """Guarda la preferencia visual en el archivo de configuracion local."""
         try:
             save_user_config({"tema": theme})
             return True
@@ -638,10 +651,13 @@ tr:hover td { background: var(--bg-card-hover); }
 <main class="main">
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-title">
-      <h2 id="page-title">Panel de Seguridad de Sesiones</h2>
-      <div class="system-status" id="system-badge">
-        <span class="badge-dot"></span>
+    <div class="topbar-left" style="display:flex; align-items:center; gap:14px;">
+      <div class="topbar-title">
+        <h2 id="page-title" style="font-size:17px; font-weight:700;">Panel de Seguridad de Sesiones</h2>
+      </div>
+      <div class="badge-version" id="txt-top-version" style="background:rgba(2,132,199,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600;">v2.6.1 · Oficial Activa</div>
+      <div class="system-status" id="system-badge" style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-muted);">
+        <span class="badge-dot" style="background:var(--green); width:6px; height:6px; border-radius:50%;"></span>
         <span id="system-status-text">Protección Activa</span>
       </div>
     </div>
@@ -660,6 +676,8 @@ tr:hover td { background: var(--bg-card-hover); }
       </button>
     </div>
   </header>
+  <!-- WARNING BANNER -->
+  <div id="warning-banner-container"></div>
 
   <!-- CONTENT VIEWS -->
   <div class="content-area">
@@ -890,15 +908,50 @@ let appState = {
   activeFilter: "todos"
 };
 
-// Check if running under pywebview bridge
-const hasBridge = typeof window.pywebview !== "undefined" && typeof window.pywebview.api !== "undefined";
+// Robust Promise-based bridge handler
+let bridgeReadyPromise = null;
 
-function callApi(method, ...args) {
-  if (hasBridge && window.pywebview.api[method]) {
-    return window.pywebview.api[method](...args);
+function waitForBridge() {
+  if (bridgeReadyPromise) return bridgeReadyPromise;
+  bridgeReadyPromise = new Promise((resolve) => {
+    if (window.pywebview && window.pywebview.api && Object.keys(window.pywebview.api).length > 0) {
+      return resolve(window.pywebview.api);
+    }
+    const onReady = () => {
+      window.removeEventListener("pywebviewready", onReady);
+      resolve(window.pywebview ? window.pywebview.api : null);
+    };
+    window.addEventListener("pywebviewready", onReady);
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (window.pywebview && window.pywebview.api && Object.keys(window.pywebview.api).length > 0) {
+        clearInterval(interval);
+        window.removeEventListener("pywebviewready", onReady);
+        resolve(window.pywebview.api);
+      } else if (attempts >= 40) {
+        clearInterval(interval);
+        window.removeEventListener("pywebviewready", onReady);
+        resolve(window.pywebview ? window.pywebview.api : null);
+      }
+    }, 100);
+  });
+  return bridgeReadyPromise;
+}
+
+async function callApi(method, ...args) {
+  const api = await waitForBridge();
+  if (api && typeof api[method] === "function") {
+    try {
+      return await api[method](...args);
+    } catch (err) {
+      console.error(`[CookieGuard Bridge] Error en ${method}:`, err);
+      return null;
+    }
   }
-  console.log(`[Bridge Mock] ${method}(`, ...args, ")");
-  return Promise.resolve(null);
+  console.warn(`[CookieGuard Bridge] Metodo '${method}' no disponible.`);
+  return null;
 }
 
 // Navigation
@@ -1214,13 +1267,28 @@ function escapeHtml(str) {
 window.addEventListener("DOMContentLoaded", async () => {
   const init = await callApi("get_initial_data");
   if (init) {
-    if (init.version) document.getElementById("txt-version").textContent = "v" + init.version;
+    if (init.version) {
+      document.getElementById("txt-version").textContent = "v" + init.version;
+      const vBadge = document.getElementById("txt-top-version");
+      if (vBadge) vBadge.textContent = "v" + init.version + " · Oficial Activa";
+    }
     if (init.theme) setTheme(init.theme);
     if (init.canary) updateCanaryDetails(init.canary);
+    if (init.warning_old) {
+      const banner = document.getElementById("warning-banner-container");
+      if (banner) {
+        banner.innerHTML = `
+          <div class="alert-banner" style="background:#78350f; color:#fef3c7; padding:10px 24px; display:flex; align-items:center; justify-content:space-between; font-size:12px; border-bottom:1px solid #92400e;">
+            <div>⚠️ <strong>Aviso de version:</strong> ${escapeHtml(init.warning_old)}</div>
+            <button onclick="this.parentElement.remove()" style="background:none; border:none; color:#fef3c7; cursor:pointer; font-size:16px; padding:0 6px;">✕</button>
+          </div>
+        `;
+      }
+    }
   }
   loadPlaybooks();
-  // Auto scan on launch
-  setTimeout(triggerScan, 300);
+  // Disparar escaneo automatico con feedback inmediato
+  triggerScan();
 });
 </script>
 </body>
