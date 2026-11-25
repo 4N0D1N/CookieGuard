@@ -1437,37 +1437,8 @@ body {
             <a href="#" onclick="switchTab('view-indicadores')">View All →</a>
           </div>
           <div class="alert-list" id="activity-alert-list">
-            <div class="alert-row">
-              <div class="alert-time">2m ago</div>
-              <div class="alert-status-dot" style="background:#ff3366;"></div>
-              <div class="alert-info">
-                <div class="alert-title">Suspicious cookie detected</div>
-                <div class="alert-domain">.facebook.com — tracking cookie</div>
-              </div>
-            </div>
-            <div class="alert-row">
-              <div class="alert-time">12m ago</div>
-              <div class="alert-status-dot" style="background:#ff9f1c;"></div>
-              <div class="alert-info">
-                <div class="alert-title">High risk cookie identified</div>
-                <div class="alert-domain">accounts.google.com — auth cookie</div>
-              </div>
-            </div>
-            <div class="alert-row">
-              <div class="alert-time">28m ago</div>
-              <div class="alert-status-dot" style="background:#00e5ff;"></div>
-              <div class="alert-info">
-                <div class="alert-title">Cookie revoked successfully</div>
-                <div class="alert-domain">discord.com — 3 cookies</div>
-              </div>
-            </div>
-            <div class="alert-row">
-              <div class="alert-time">1h ago</div>
-              <div class="alert-status-dot" style="background:#ff3366;"></div>
-              <div class="alert-info">
-                <div class="alert-title">Multiple tracking cookies found</div>
-                <div class="alert-domain">doubleclick.net — 12 cookies</div>
-              </div>
+            <div style="padding:24px; color:var(--text-muted); font-size:13px; text-align:center;">
+              Sin amenazas detectadas. Todos los sensores están en orden.
             </div>
           </div>
         </div>
@@ -1478,60 +1449,8 @@ body {
             <h3>Quick Service Revocation</h3>
           </div>
           <div class="service-list" id="quick-services-list">
-            <div class="service-row">
-              <div class="service-info">
-                <div class="service-logo" style="color:#ea4335;">G</div>
-                <div class="service-meta">
-                  <div class="s-name">Google</div>
-                  <div class="s-count">12 cookies</div>
-                </div>
-              </div>
-              <div class="service-actions">
-                <span class="risk-pill risk-high">3 high risk</span>
-                <button class="btn-revoke-sm" onclick="triggerRevokeService('Google')">Revoke</button>
-              </div>
-            </div>
-
-            <div class="service-row">
-              <div class="service-info">
-                <div class="service-logo" style="color:#5865f2;">D</div>
-                <div class="service-meta">
-                  <div class="s-name">Discord</div>
-                  <div class="s-count">8 cookies</div>
-                </div>
-              </div>
-              <div class="service-actions">
-                <span class="risk-pill risk-high">2 high risk</span>
-                <button class="btn-revoke-sm" onclick="triggerRevokeService('Discord')">Revoke</button>
-              </div>
-            </div>
-
-            <div class="service-row">
-              <div class="service-info">
-                <div class="service-logo" style="color:#fff;">𝕏</div>
-                <div class="service-meta">
-                  <div class="s-name">X (Twitter)</div>
-                  <div class="s-count">6 cookies</div>
-                </div>
-              </div>
-              <div class="service-actions">
-                <span class="risk-pill risk-high">1 high risk</span>
-                <button class="btn-revoke-sm" onclick="triggerRevokeService('X')">Revoke</button>
-              </div>
-            </div>
-
-            <div class="service-row">
-              <div class="service-info">
-                <div class="service-logo" style="color:#fff;">🐙</div>
-                <div class="service-meta">
-                  <div class="s-name">GitHub</div>
-                  <div class="s-count">4 cookies</div>
-                </div>
-              </div>
-              <div class="service-actions">
-                <span class="risk-pill risk-none">No risks</span>
-                <button class="btn-revoke-sm" onclick="triggerRevokeService('GitHub')">Revoke</button>
-              </div>
+            <div style="padding:24px; color:var(--text-muted); font-size:13px; text-align:center;">
+              Sin sesiones activas de servicios detectadas.
             </div>
           </div>
         </div>
@@ -1834,17 +1753,8 @@ function updateDashboardUI(res) {
 
   // 2. Real KPIs without fake fallbacks
   const total = s.cookies_totales || (res.sesiones ? res.sesiones.length : (res.grupos ? res.grupos.reduce((acc, g) => acc + (g.cookies || 1), 0) : 0));
-  const risk = (v.nivel === 'rojo' || v.nivel === 'amarillo') ? (v.puntos || 0) : 0;
-  const services = (res.grupos && res.grupos.length) || 0;
 
-  document.getElementById('kpi-total-cookies').innerText = total;
-  document.getElementById('kpi-at-risk').innerText = risk;
-  document.getElementById('kpi-services-count').innerText = services;
-  document.getElementById('donut-center-val').innerText = total;
-
-  document.getElementById('scan-meta-text').innerText = 'Last scan: Just now • ' + total + ' cookies analyzed';
-
-  // 3. Donut chart breakdown
+  // 3. Donut chart breakdown & real cookie risk counts
   let highCount = 0, medCount = 0, lowCount = 0;
   if (res.sesiones && res.sesiones.length > 0) {
     res.sesiones.forEach(c => {
@@ -1859,6 +1769,16 @@ function updateDashboardUI(res) {
       else lowCount += (g.cookies || 1);
     });
   }
+
+  const riskyCookies = highCount + medCount;
+  const services = (res.grupos && res.grupos.length) || 0;
+
+  document.getElementById('kpi-total-cookies').innerText = total;
+  document.getElementById('kpi-at-risk').innerText = riskyCookies;
+  document.getElementById('kpi-services-count').innerText = services;
+  document.getElementById('donut-center-val').innerText = total;
+
+  document.getElementById('scan-meta-text').innerText = 'Last scan: Just now • ' + total + ' cookies analyzed';
   const sum = (highCount + medCount + lowCount) || 1;
   document.getElementById('leg-high-val').innerText = highCount + ' (' + Math.round(highCount * 100 / sum) + '%)';
   document.getElementById('leg-med-val').innerText = medCount + ' (' + Math.round(medCount * 100 / sum) + '%)';
@@ -1937,27 +1857,31 @@ function updateDashboardUI(res) {
 
   // 6. Quick Service Revocation
   const svcList = document.getElementById('quick-services-list');
-  if (svcList && res.grupos && res.grupos.length > 0) {
+  if (svcList) {
     svcList.innerHTML = '';
-    res.grupos.slice(0, 5).forEach(g => {
-      const isCrit = g.critico || g.riesgo === 'Alto';
-      const row = document.createElement('div');
-      row.className = 'service-row';
-      row.innerHTML = `
-        <div class="service-info">
-          <div class="service-logo" style="color:var(--cyan); font-weight:700;">${escapeHtml((g.nombre || 'W')[0].toUpperCase())}</div>
-          <div class="service-meta">
-            <div class="s-name">${escapeHtml(g.nombre || 'Servicio')}</div>
-            <div class="s-count">${g.cookies || 1} cookies (${escapeHtml(g.categoria || 'Auth')})</div>
+    if (res.grupos && res.grupos.length > 0) {
+      res.grupos.slice(0, 5).forEach(g => {
+        const isCrit = g.critico || g.riesgo === 'Alto';
+        const row = document.createElement('div');
+        row.className = 'service-row';
+        row.innerHTML = `
+          <div class="service-info">
+            <div class="service-logo" style="color:var(--cyan); font-weight:700;">${escapeHtml((g.nombre || 'W')[0].toUpperCase())}</div>
+            <div class="service-meta">
+              <div class="s-name">${escapeHtml(g.nombre || 'Servicio')}</div>
+              <div class="s-count">${g.cookies || 1} cookies (${escapeHtml(g.categoria || 'Auth')})</div>
+            </div>
           </div>
-        </div>
-        <div class="service-actions">
-          <span class="risk-pill ${isCrit ? 'risk-high' : 'risk-none'}">${isCrit ? 'Riesgo alto' : 'Monitoreado'}</span>
-          <button class="btn-revoke-sm" onclick="triggerRevokeService('${escapeHtml(g.nombre || '')}')">Revoke</button>
-        </div>
-      `;
-      svcList.appendChild(row);
-    });
+          <div class="service-actions">
+            <span class="risk-pill ${isCrit ? 'risk-high' : 'risk-none'}">${isCrit ? 'Riesgo alto' : 'Monitoreado'}</span>
+            <button class="btn-revoke-sm" onclick="triggerRevokeService('${escapeHtml(g.nombre || '')}')">Revoke</button>
+          </div>
+        `;
+        svcList.appendChild(row);
+      });
+    } else {
+      svcList.innerHTML = '<div style="padding:24px; color:var(--text-muted); font-size:13px; text-align:center;">Sin sesiones de servicios detectadas</div>';
+    }
   }
 
   // 7. Incidents Tab & Badge
