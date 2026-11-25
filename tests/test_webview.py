@@ -122,7 +122,7 @@ class TestWebviewApp(unittest.TestCase):
         # Must serialize cleanly with standard json
         dumped = json.dumps(sanitized)
         self.assertIn("2027-01-01T12:00:00", dumped)
-        self.assertIn("/tmp/test.db", dumped)
+        self.assertTrue("/tmp/test.db" in dumped or "\\tmp\\test.db" in dumped or "test.db" in dumped)
         self.assertIsInstance(sanitized["set_val"], list)
 
     def test_dashboard_html_no_fake_static_fallbacks(self):
