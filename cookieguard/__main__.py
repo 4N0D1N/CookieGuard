@@ -301,35 +301,42 @@ def main(argv=None):
     sub.add_parser("diagnostico", help="Alias de doctor").add_argument("--json", action="store_true")
     sub.add_parser("salud", help="Alias de doctor").add_argument("--json", action="store_true")
 
+    dsh = sub.add_parser("dashboard", help="Inicia el servidor local y abre la consola visual en el navegador web")
+    dsh.add_argument("--port", type=int, default=0, help="Puerto local específico")
+    sub.add_parser("web", help="Alias de dashboard").add_argument("--port", type=int, default=0)
+
     args, _extra = ap.parse_known_args(argv)
 
     from . import actions, engine, reports
     from .common import VERSION
 
-    if args.cmd in (None, "gui"):
+    if args.cmd in (None, "gui", "dashboard", "web"):
+        browser_mode = (args.cmd in ("dashboard", "web")) or any(flag in sys.argv for flag in ("--browser", "--web", "--navegador"))
         # Flag opcional para forzar la interfaz clásica de Tkinter
-        if any(flag in sys.argv for flag in ("--classic", "--tkinter", "--legacy")):
+        if not browser_mode and any(flag in sys.argv for flag in ("--classic", "--tkinter", "--legacy")):
             try:
                 from . import gui
                 return gui.main()
             except Exception as e:
                 print(f"Aviso: Interfaz clásica no disponible ({e}).")
 
-        # Lanzador predeterminado: Interfaz de escritorio moderna con PyWebView
+        # Lanzador predeterminado: Interfaz de escritorio moderna con PyWebView o navegador local
         try:
             from . import webview_app
-            return webview_app.launch(debug="--debug" in sys.argv)
+            return webview_app.launch(debug="--debug" in sys.argv, browser_mode=browser_mode)
         except Exception as e_wv:
-            # Fallback 1: Intentar interfaz Tkinter si PyWebView no está soportado en este entorno
+            # Fallback 1: Si falla la ventana nativa, abrir en navegador
             try:
-                from . import gui
-                return gui.main()
-            except (ImportError, Exception) as e_tk:
-                # Fallback 2: Abrir reporte interactivo en el navegador local
-                print(f"Aviso: Interfaz de escritorio no disponible ({e_wv} / {e_tk}).")
-                print("Abriendo el dashboard visual e informe interactivo en tu navegador...")
-                res = engine.run_login(open_report=True, notify_user=False)
-                return 0
+                from . import webview_app
+                return webview_app.launch(debug="--debug" in sys.argv, browser_mode=True)
+            except Exception as e_bw:
+                # Fallback 2: Intentar interfaz clásica Tkinter si todo lo demás falla
+                try:
+                    from . import gui
+                    return gui.main()
+                except (ImportError, Exception) as e_tk:
+                    print(f"Aviso: Interfaz no disponible ({e_wv} / {e_bw} / {e_tk}).")
+                    return 1
     if args.cmd == "version":
         print(VERSION)
     elif args.cmd == "analizar":

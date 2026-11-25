@@ -34,7 +34,7 @@ def run_analysis(profiles=None, scan_dirs=None, update_state: bool = True, progr
     res = {
         "generado": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "version": VERSION,
         "sistema": f"{platform.system()} {platform.release()}", "estadisticas": stats, "errores": errors,
-        "veredicto": veredicto, "indicadores": indicadores, "grupos": grupos,
+        "veredicto": veredicto, "indicadores": indicadores, "grupos": grupos, "sesiones": sessions,
         "extensiones": ctx.extensions, "duracion_s": round(time.time() - t0, 1),
         "primera_ejecucion": baseline is None,
     }

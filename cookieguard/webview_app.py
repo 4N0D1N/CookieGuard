@@ -1,4 +1,4 @@
-"""CookieGuard v2.7.0 · Consola de escritorio Cyber SOC idéntica al diseño oficial."""
+"""CookieGuard v2.7.1 · Consola de escritorio Cyber SOC idéntica al diseño oficial."""
 from __future__ import annotations
 
 import http.server
@@ -11,7 +11,21 @@ import threading
 import time
 import webbrowser
 from pathlib import Path
+from datetime import datetime, date
 from typing import Any, Dict, Optional
+
+
+def sanitize_for_json(data: Any) -> Any:
+    """Convierte datetimes a formato ISO, sets a listas y Paths a strings para garantizar serialización JSON estricta."""
+    def default_handler(o):
+        if isinstance(o, (datetime, date)):
+            return o.isoformat()
+        if isinstance(o, (set, frozenset)):
+            return sorted(list(o))
+        if isinstance(o, Path):
+            return str(o)
+        return str(o)
+    return json.loads(json.dumps(data, default=default_handler))
 
 from . import actions, browsers, canary_trap, engine, playbooks, reports, rescue_wizard
 from .common import VERSION, load_config, save_user_config
@@ -48,14 +62,15 @@ class BridgeApi:
         except Exception:
             pass
 
-        return {
+        return sanitize_for_json({
             "version": VERSION,
             "theme": cfg.get("tema", "oscuro"),
             "canary": canary_status,
             "last_res": self.last_res,
             "warning_old": warning_old,
+            "playbooks": playbooks.PLAYBOOK_CATALOG,
             "binary_path": sys.executable if getattr(sys, "frozen", False) else os.path.abspath(__file__)
-        }
+        })
 
     def run_scan(self) -> Dict[str, Any]:
         """Ejecuta un escaneo completo de sesiones y actualiza reportes locales."""
@@ -66,17 +81,18 @@ class BridgeApi:
                 reports.write_reports(res)
             except Exception:
                 pass
-            self.last_res = res
-            return res
+            clean_res = sanitize_for_json(res)
+            self.last_res = clean_res
+            return clean_res
 
     def deploy_canary(self) -> Dict[str, Any]:
         """Despliega trampas señuelo Canary en los navegadores."""
         canary_trap.deploy_canary_traps()
-        return canary_trap.check_canary_traps()
+        return sanitize_for_json(canary_trap.check_canary_traps())
 
     def check_canary(self) -> Dict[str, Any]:
         """Verifica la integridad de las trampas señuelo."""
-        return canary_trap.check_canary_traps()
+        return sanitize_for_json(canary_trap.check_canary_traps())
 
     def open_url(self, url: str) -> bool:
         """Abre de forma segura una URL oficial en el navegador predeterminado."""
@@ -84,14 +100,36 @@ class BridgeApi:
             return False
         return webbrowser.open(url)
 
-    def revoke_service(self, service_name: str) -> Dict[str, Any]:
+    def get_playbooks(self) -> list:
+        """Devuelve el catálogo de playbooks de revocación."""
+        return sanitize_for_json(playbooks.PLAYBOOK_CATALOG)
+
+    def revoke_service(self, service_name: str, action_type: str = "sesiones") -> Dict[str, Any]:
         """Abre la URL oficial de revocación para un servicio o genera playbook."""
+        s_low = (service_name or "").lower().strip()
+        target_p = None
         for p in playbooks.PLAYBOOK_CATALOG:
-            if p.get("nombre", "").lower() == service_name.lower():
-                url = p.get("url_sesiones") or p.get("url_password")
-                if url:
-                    webbrowser.open(url)
-                    return {"ok": True, "servicio": service_name, "url": url}
+            pid = p.get("id", "").lower()
+            pname = p.get("nombre", "").lower()
+            domains = [d.lower() for d in p.get("dominios", [])]
+            if (s_low == pid or s_low == pname or s_low in pname or
+                pname.startswith(s_low) or any(s_low in d for d in domains)):
+                target_p = p
+                break
+
+        if target_p:
+            url = None
+            if action_type == "password":
+                url = target_p.get("url_password") or target_p.get("url_sesiones")
+            elif action_type == "oauth":
+                url = target_p.get("url_oauth") or target_p.get("url_sesiones")
+            else:
+                url = target_p.get("url_sesiones") or target_p.get("url_password") or target_p.get("url_oauth")
+
+            if url:
+                self.open_url(url)
+                return {"ok": True, "servicio": target_p.get("nombre", service_name), "url": url, "accion": action_type}
+
         return {"ok": True, "servicio": service_name, "mensaje": "Revocación recomendada manual"}
 
     def revoke_all_sessions(self) -> Dict[str, Any]:
@@ -133,9 +171,9 @@ class BridgeApi:
     def run_rescue_plan(self, kill_browsers: bool = False) -> Dict[str, Any]:
         """Ejecuta el asistente de rescate de emergencia."""
         t_dir = Path(tempfile.gettempdir())
-        return rescue_wizard.run_rescue_plan(
+        return sanitize_for_json(rescue_wizard.run_rescue_plan(
             auto=True, killswitch=False, kill_browsers=kill_browsers, output_dir=t_dir
-        )
+        ))
 
     def run_specialized_tool(self, tool_id: str) -> Dict[str, Any]:
         """Ejecuta herramientas especializadas locales bajo demanda."""
@@ -229,7 +267,7 @@ class LocalDashboardServer:
                                 res = func(*args)
                             else:
                                 res = func(args)
-                            out_bytes = json.dumps(res, ensure_ascii=False).encode("utf-8")
+                            out_bytes = json.dumps(sanitize_for_json(res), ensure_ascii=False).encode("utf-8")
                             self.send_response(200)
                             self.send_header("Content-Type", "application/json; charset=utf-8")
                             self.send_header("Content-Length", str(len(out_bytes)))
@@ -1054,6 +1092,7 @@ body {
       <span class="status-dot" id="system-status-dot"></span>
       <span id="system-status-text">System Healthy</span>
     </div>
+    <button class="icon-btn" id="theme-toggle-btn" title="Alternar tema claro / oscuro" onclick="toggleTheme()">☀️</button>
     <button class="icon-btn" title="Language / Network" onclick="showToast('Sistema en modo local seguro', 'info')">🌐</button>
     <div class="user-profile" onclick="switchTab('view-herramientas')">
       <div class="user-avatar">A</div>
@@ -1084,7 +1123,7 @@ body {
           <span>🛡️</span>
           <span>Incidents</span>
         </div>
-        <span class="nav-badge" id="incident-badge">3</span>
+        <span class="nav-badge" id="incident-badge" style="display:none;">0</span>
       </div>
       <div class="nav-link" id="nav-sesiones" onclick="switchTab('view-sesiones')">
         <div class="nav-link-content">
@@ -1104,16 +1143,10 @@ body {
           <span>Revocations</span>
         </div>
       </div>
-      <div class="nav-link" id="nav-analytics" onclick="switchTab('view-canary')">
-        <div class="nav-link-content">
-          <span>📊</span>
-          <span>Analytics</span>
-        </div>
-      </div>
-      <div class="nav-link" id="nav-settings" onclick="switchTab('view-canary')">
+      <div class="nav-link" id="nav-canary" onclick="switchTab('view-canary')">
         <div class="nav-link-content">
           <span>⚙️</span>
-          <span>Settings</span>
+          <span>Canary &amp; Settings</span>
         </div>
       </div>
     </nav>
@@ -1140,7 +1173,7 @@ body {
             <button class="btn-outline" onclick="triggerRevokeAll()">⊗ Revoke All</button>
             <button class="btn-outline btn-emergency" onclick="triggerEmergencyMode()">⚡ Emergency Mode</button>
           </div>
-          <div class="scan-meta" id="scan-meta-text">Last scan: Just now • 247 cookies analyzed</div>
+          <div class="scan-meta" id="scan-meta-text">Auditoría lista • Presiona "Scan Now"</div>
         </div>
       </div>
 
@@ -1150,7 +1183,7 @@ body {
           <div class="kpi-left">
             <div class="kpi-icon-box kpi-icon-cyan">🛡️</div>
             <div class="kpi-text">
-              <div class="num" id="kpi-total-cookies">247</div>
+              <div class="num" id="kpi-total-cookies">0</div>
               <div class="label">Total Cookies</div>
             </div>
           </div>
@@ -1164,7 +1197,7 @@ body {
           <div class="kpi-left">
             <div class="kpi-icon-box kpi-icon-orange">⚠️</div>
             <div class="kpi-text">
-              <div class="num" id="kpi-at-risk">23</div>
+              <div class="num" id="kpi-at-risk">0</div>
               <div class="label">At Risk</div>
             </div>
           </div>
@@ -1178,7 +1211,7 @@ body {
           <div class="kpi-left">
             <div class="kpi-icon-box kpi-icon-blue">👥</div>
             <div class="kpi-text">
-              <div class="num" id="kpi-services-count">8</div>
+              <div class="num" id="kpi-services-count">0</div>
               <div class="label">Services</div>
             </div>
           </div>
@@ -1192,7 +1225,7 @@ body {
           <div class="kpi-left">
             <div class="kpi-icon-box kpi-icon-purple">🔒</div>
             <div class="kpi-text">
-              <div class="num" id="kpi-revoked-count">5</div>
+              <div class="num" id="kpi-revoked-count">0</div>
               <div class="label">Revoked (24h)</div>
             </div>
           </div>
@@ -1220,26 +1253,26 @@ body {
                 <circle id="donut-seg-high" cx="60" cy="60" r="46" fill="none" stroke="#ff3366" stroke-width="12" stroke-dasharray="289" stroke-dashoffset="265"/>
               </svg>
               <div class="donut-center">
-                <div class="c-num" id="donut-center-val">247</div>
+                <div class="c-num" id="donut-center-val">0</div>
                 <div class="c-lbl">Cookies</div>
               </div>
             </div>
             <div class="donut-legend">
               <div class="leg-item">
                 <div class="leg-left"><span class="leg-dot" style="background:#ff3366;"></span>High Risk</div>
-                <div class="leg-val" id="leg-high-val">23 (9%)</div>
+                <div class="leg-val" id="leg-high-val">0 (0%)</div>
               </div>
               <div class="leg-item">
                 <div class="leg-left"><span class="leg-dot" style="background:#ff9f1c;"></span>Medium Risk</div>
-                <div class="leg-val" id="leg-med-val">57 (23%)</div>
+                <div class="leg-val" id="leg-med-val">0 (0%)</div>
               </div>
               <div class="leg-item">
                 <div class="leg-left"><span class="leg-dot" style="background:#00e5ff;"></span>Low Risk</div>
-                <div class="leg-val" id="leg-low-val">142 (57%)</div>
+                <div class="leg-val" id="leg-low-val">0 (0%)</div>
               </div>
               <div class="leg-item">
                 <div class="leg-left"><span class="leg-dot" style="background:#a855f7;"></span>Unknown</div>
-                <div class="leg-val" id="leg-unk-val">25 (11%)</div>
+                <div class="leg-val" id="leg-unk-val">0 (0%)</div>
               </div>
             </div>
           </div>
@@ -1388,55 +1421,11 @@ body {
             </tr>
           </thead>
           <tbody id="detected-cookies-tbody">
-            <tr>
-              <td><input type="checkbox"></td>
-              <td><strong>SID</strong></td>
-              <td>accounts.google.com</td>
-              <td>Google</td>
-              <td><span class="pill-badge pill-high">High</span></td>
-              <td>Authentication</td>
-              <td>2 minutes ago</td>
-              <td><button class="btn-revoke-sm" onclick="triggerRevokeService('Google')">Revoke</button></td>
-            </tr>
-            <tr>
-              <td><input type="checkbox"></td>
-              <td><strong>dtCookie</strong></td>
-              <td>doubleclick.net</td>
-              <td>Google</td>
-              <td><span class="pill-badge pill-high">High</span></td>
-              <td>Tracking</td>
-              <td>5 minutes ago</td>
-              <td><button class="btn-revoke-sm" onclick="triggerRevokeService('Google')">Revoke</button></td>
-            </tr>
-            <tr>
-              <td><input type="checkbox"></td>
-              <td><strong>sb</strong></td>
-              <td>twitter.com</td>
-              <td>X</td>
-              <td><span class="pill-badge pill-medium">Medium</span></td>
-              <td>Analytics</td>
-              <td>12 minutes ago</td>
-              <td><button class="btn-revoke-sm" onclick="triggerRevokeService('X')">Revoke</button></td>
-            </tr>
-            <tr>
-              <td><input type="checkbox"></td>
-              <td><strong>__Secure-1PSID</strong></td>
-              <td>google.com</td>
-              <td>Google</td>
-              <td><span class="pill-badge pill-low">Low</span></td>
-              <td>Preference</td>
-              <td>18 minutes ago</td>
-              <td><button class="btn-revoke-sm" onclick="triggerRevokeService('Google')">Revoke</button></td>
-            </tr>
-            <tr>
-              <td><input type="checkbox"></td>
-              <td><strong>discord_unique_id</strong></td>
-              <td>discord.com</td>
-              <td>Discord</td>
-              <td><span class="pill-badge pill-medium">Medium</span></td>
-              <td>Functional</td>
-              <td>28 minutes ago</td>
-              <td><button class="btn-revoke-sm" onclick="triggerRevokeService('Discord')">Revoke</button></td>
+            <tr id="initial-scan-row">
+              <td colspan="8" style="text-align:center; padding:36px; color:var(--text-muted);">
+                <div style="font-size:15px; font-weight:600; margin-bottom:6px; color:var(--text-main);">🔍 Auditoría lista</div>
+                Haz clic en "Scan Now" para auditar cookies de sesión en Edge, Chrome, Brave o Firefox.
+              </td>
             </tr>
           </tbody>
         </table>
@@ -1520,6 +1509,16 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 4000);
 }
 
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.innerText = next === 'dark' ? '☀️' : '🌙';
+  callApi('save_theme_preference', next === 'dark' ? 'oscuro' : 'claro');
+  showToast('Tema cambiado a ' + (next === 'dark' ? 'Oscuro · SOC' : 'Claro · Fluent'), 'info');
+}
+
 function switchTab(viewId) {
   document.querySelectorAll('.view-panel').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
@@ -1527,6 +1526,99 @@ function switchTab(viewId) {
   if (target) target.classList.add('active');
   const navItem = document.getElementById('nav-' + viewId.replace('view-', ''));
   if (navItem) navItem.classList.add('active');
+}
+
+async function triggerRevokeServiceAction(svc, actionType) {
+  showToast('Abriendo acción ' + actionType + ' para ' + svc + '...', 'info');
+  const res = await callApi('revoke_service', svc, actionType);
+  if (res && res.url) showToast('Portal oficial abierto en tu navegador.', 'success');
+  else showToast('No se encontró un portal para ' + svc + '. Revisa las instrucciones.', 'info');
+}
+
+function renderPlaybooks(playbookList) {
+  const container = document.getElementById('playbooks-container');
+  if (!container || !Array.isArray(playbookList)) return;
+  container.innerHTML = '<div style="margin-bottom:16px;"><input type="text" id="playbook-search" style="width:100%;max-width:400px;padding:8px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-main);" placeholder="Filtrar servicios (Google, Microsoft, GitHub...)" oninput="filterPlaybooks(this.value)"></div><div id="playbook-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;"></div>';
+  const cards = document.getElementById('playbook-cards');
+  playbookList.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'playbook-card';
+    card.dataset.search = ((p.nombre || '') + ' ' + (p.id || '') + ' ' + (p.categoria || '')).toLowerCase();
+    card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;';
+    const steps = (p.pasos || []).slice(0, 2).map(x => '<li>' + escapeHtml(x) + '</li>').join('');
+    card.innerHTML = '<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:11px;color:var(--cyan);text-transform:uppercase;font-weight:700;">' + escapeHtml(p.categoria || 'Servicio') + '</span><span class="pill-badge ' + (p.criticidad === 'Crítica' ? 'pill-high' : 'pill-medium') + '">' + escapeHtml(p.criticidad || 'Media') + '</span></div><h3 style="font-size:16px;font-weight:700;color:var(--text-main);margin-bottom:6px;">' + escapeHtml(p.nombre || p.id) + '</h3><ul style="margin:10px 0 14px 18px;font-size:12px;color:var(--text-muted);line-height:1.4;">' + steps + '</ul></div>';
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);';
+    [['🔑 Cerrar sesiones', 'sesiones'], ['🛡️ Cambiar clave', 'password'], ['📋 Permisos OAuth', 'oauth']].forEach(([label, action]) => {
+      const button = document.createElement('button');
+      button.className = action === 'sesiones' ? 'btn-revoke-sm' : 'btn-outline';
+      button.textContent = label;
+      button.addEventListener('click', () => triggerRevokeServiceAction(p.id, action));
+      actions.appendChild(button);
+    });
+    card.appendChild(actions);
+    cards.appendChild(card);
+  });
+}
+
+function filterPlaybooks(q) {
+  const query = (q || '').toLowerCase();
+  document.querySelectorAll('#playbook-cards .playbook-card').forEach(el => { el.style.display = (!query || el.dataset.search.includes(query)) ? '' : 'none'; });
+}
+
+function renderAllSessions(res) {
+  const container = document.getElementById('all-sessions-container');
+  if (!container) return;
+  const items = (res.sesiones && res.sesiones.length) ? res.sesiones : (res.grupos || []);
+  container.innerHTML = '<div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;"><input type="text" id="all-sessions-search" style="width:100%;max-width:400px;padding:8px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-main);" placeholder="Buscar nombre, host o servicio..." oninput="filterAllSessions(this.value)"><span style="font-size:13px;color:var(--text-muted);">Metadatos: ' + items.length + '</span></div><div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="border-bottom:1px solid var(--border);"><th>Nombre</th><th>Host</th><th>Servicio</th><th>Riesgo</th><th>Categoría</th><th>Caducidad</th><th>Acción</th></tr></thead><tbody id="all-sessions-tbody"></tbody></table></div>';
+  const tbody = document.getElementById('all-sessions-tbody');
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">Sin metadatos de cookies de sesión detectados. Cierra y reabre el navegador si esperabas encontrar una sesión activa.</td></tr>';
+    return;
+  }
+  items.forEach(c => {
+    const name = c.name || c.nombre || 'Cookie';
+    const host = c.host || (Array.isArray(c.dominios) ? c.dominios.join(', ') : c.dominio) || '';
+    const svc = c.servicio_id || c.servicio || c.nombre || 'Web';
+    const high = c.confianza === 'Alta' || c.critico || c.riesgo === 'Alto';
+    const med = c.confianza === 'Media' || c.riesgo === 'Medio';
+    const risk = high ? 'High' : (med ? 'Medium' : 'Low');
+    const pill = high ? 'pill-high' : (med ? 'pill-medium' : 'pill-low');
+    const cat = c.categoria || (c.httponly ? 'Protegida' : 'Sesión');
+    const exp = c.expires || c.caducidad_max || 'Activa';
+
+    const tr = document.createElement('tr');
+    tr.className = 'all-session-row';
+    tr.dataset.search = (name + ' ' + host + ' ' + svc).toLowerCase();
+
+    [name, host, svc, risk, cat, String(exp).slice(0, 10)].forEach((val, i) => {
+      const td = document.createElement('td');
+      if (i === 3) {
+        const badge = document.createElement('span');
+        badge.className = 'pill-badge ' + pill;
+        badge.textContent = val;
+        td.appendChild(badge);
+      } else {
+        td.textContent = val;
+      }
+      tr.appendChild(td);
+    });
+
+    const actionTd = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.className = 'btn-revoke-sm';
+    btn.textContent = 'Portal';
+    btn.addEventListener('click', () => triggerRevokeService(svc));
+    actionTd.appendChild(btn);
+    tr.appendChild(actionTd);
+
+    tbody.appendChild(tr);
+  });
+}
+
+function filterAllSessions(q) {
+  const query = (q || '').toLowerCase();
+  document.querySelectorAll('#all-sessions-tbody tr.all-session-row').forEach(row => { row.style.display = (!query || row.dataset.search.includes(query)) ? '' : 'none'; });
 }
 
 // SCAN REAL
@@ -1556,21 +1648,24 @@ function updateDashboardUI(res) {
   const v = res.veredicto || {};
   const s = res.estadisticas || {};
 
-  // Status pill
+  // 1. Status pill
   const pill = document.getElementById('system-status-pill');
-  const text = document.getElementById('system-status-text');
-  if (v.nivel === 'rojo' || v.nivel === 'amarillo') {
-    pill.classList.add('danger');
-    text.innerText = (v.puntos || 0) + ' Threat Points';
+  const pillText = document.getElementById('system-status-text');
+  if (v.nivel === 'rojo') {
+    pill.className = 'status-pill danger';
+    pillText.innerText = (v.puntos || 0) + ' Threat Points (High)';
+  } else if (v.nivel === 'amarillo') {
+    pill.className = 'status-pill warning';
+    pillText.innerText = (v.puntos || 0) + ' Warning Points';
   } else {
-    pill.classList.remove('danger');
-    text.innerText = 'System Healthy';
+    pill.className = 'status-pill healthy';
+    pillText.innerText = 'System Healthy';
   }
 
-  // KPIs
-  const total = s.cookies_totales || s.total_cookies || 247;
-  const risk = (v.nivel === 'rojo' || v.nivel === 'amarillo') ? (v.puntos || 23) : 0;
-  const services = (res.grupos && res.grupos.length) || 8;
+  // 2. Real KPIs without fake fallbacks
+  const total = s.cookies_totales || (res.sesiones ? res.sesiones.length : (res.grupos ? res.grupos.reduce((acc, g) => acc + (g.cookies || 1), 0) : 0));
+  const risk = (v.nivel === 'rojo' || v.nivel === 'amarillo') ? (v.puntos || 0) : 0;
+  const services = (res.grupos && res.grupos.length) || 0;
 
   document.getElementById('kpi-total-cookies').innerText = total;
   document.getElementById('kpi-at-risk').innerText = risk;
@@ -1579,28 +1674,142 @@ function updateDashboardUI(res) {
 
   document.getElementById('scan-meta-text').innerText = 'Last scan: Just now • ' + total + ' cookies analyzed';
 
-  // Render Real Detected Cookies if available
-  if (res.grupos && res.grupos.length > 0) {
-    const tbody = document.getElementById('detected-cookies-tbody');
-    tbody.innerHTML = '';
+  // 3. Donut chart breakdown
+  let highCount = 0, medCount = 0, lowCount = 0;
+  if (res.sesiones && res.sesiones.length > 0) {
+    res.sesiones.forEach(c => {
+      if (c.confianza === 'Alta' || c.categoria === 'auth') highCount++;
+      else if (c.confianza === 'Media') medCount++;
+      else lowCount++;
+    });
+  } else if (res.grupos && res.grupos.length > 0) {
     res.grupos.forEach(g => {
+      if (g.critico || g.riesgo === 'Alto') highCount += (g.cookies || 1);
+      else if (g.riesgo === 'Medio') medCount += (g.cookies || 1);
+      else lowCount += (g.cookies || 1);
+    });
+  }
+  const sum = (highCount + medCount + lowCount) || 1;
+  document.getElementById('leg-high-val').innerText = highCount + ' (' + Math.round(highCount * 100 / sum) + '%)';
+  document.getElementById('leg-med-val').innerText = medCount + ' (' + Math.round(medCount * 100 / sum) + '%)';
+  document.getElementById('leg-low-val').innerText = lowCount + ' (' + Math.round(lowCount * 100 / sum) + '%)';
+  document.getElementById('leg-unk-val').innerText = '0 (0%)';
+
+  // 4. Detected Cookies Table
+  const tbody = document.getElementById('detected-cookies-tbody');
+  tbody.innerHTML = '';
+  const items = (res.sesiones && res.sesiones.length > 0) ? res.sesiones : (res.grupos || []);
+
+  if (items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);"><div style="font-size:15px; font-weight:600; margin-bottom:6px; color:var(--text-main);">No se detectaron cookies de sesión activas</div>Si abriste una sesión en tu navegador (Edge, Chrome, Firefox), asegúrate de haber iniciado sesión o cierra el navegador si mantiene el archivo de base de datos bloqueado exclusivamente.</td></tr>`;
+  } else {
+    items.forEach(c => {
+      const name = c.name || c.nombre || 'Cookie';
+      const host = c.host || (c.dominios ? Array.from(c.dominios).join(', ') : c.dominio) || '';
+      const svc = c.servicio_id || c.nombre || 'Web';
+      const isHigh = c.confianza === 'Alta' || c.critico || c.riesgo === 'Alto';
+      const isMed = c.confianza === 'Media' || c.riesgo === 'Medio';
+      const riskLabel = isHigh ? 'High' : (isMed ? 'Medium' : 'Low');
+      const pillClass = isHigh ? 'pill-high' : (isMed ? 'pill-medium' : 'pill-low');
+      const cat = c.categoria || (c.httponly ? 'Protected' : 'Authentication');
+      const exp = c.expires ? String(c.expires).slice(0, 10) : (c.caducidad_max ? String(c.caducidad_max).slice(0, 10) : 'Active');
+
       const tr = document.createElement('tr');
-      const isRisk = g.critico || (v.nivel !== 'verde');
-      const pillClass = isRisk ? 'pill-high' : 'pill-low';
-      const riskLabel = isRisk ? 'High' : 'Low';
+      tr.className = 'cookie-row';
+      tr.dataset.service = svc.toLowerCase();
+      tr.dataset.risk = riskLabel.toLowerCase();
+      tr.dataset.search = (name + ' ' + host + ' ' + svc).toLowerCase();
       tr.innerHTML = `
-        <td><input type="checkbox"></td>
-        <td><strong>${escapeHtml(g.nombre || 'Cookie')}</strong></td>
-        <td>${escapeHtml(g.dominio || '')}</td>
-        <td>${escapeHtml(g.nombre || 'Web')}</td>
+        <td><input type="checkbox" class="row-check"></td>
+        <td><strong>${escapeHtml(name)}</strong></td>
+        <td>${escapeHtml(host)}</td>
+        <td>${escapeHtml(svc)}</td>
         <td><span class="pill-badge ${pillClass}">${riskLabel}</span></td>
-        <td>Authentication</td>
-        <td>Just now</td>
-        <td><button class="btn-revoke-sm" onclick="triggerRevokeService('${escapeHtml(g.nombre || '')}')">Revoke</button></td>
+        <td>${escapeHtml(cat)}</td>
+        <td>${escapeHtml(exp)}</td>
+        <td><button class="btn-revoke-sm" onclick="triggerRevokeService('${escapeHtml(svc)}')">Revoke</button></td>
       `;
       tbody.appendChild(tr);
     });
   }
+
+  // 5. Recent Alert Activity
+  const activityList = document.getElementById('activity-alert-list');
+  if (activityList) {
+    activityList.innerHTML = '';
+    const activeAlerts = (res.indicadores || []).filter(i => i.estado === 'alerta');
+    if (activeAlerts.length === 0) {
+      activityList.innerHTML = `<div style="padding:16px; color:var(--text-muted); font-size:13px;">Sin amenazas detectadas. Todos los sensores están en orden.</div>`;
+    } else {
+      activeAlerts.slice(0, 5).forEach(a => {
+        const row = document.createElement('div');
+        row.className = 'alert-row';
+        row.innerHTML = `
+          <div class="alert-time">Hoy</div>
+          <div class="alert-status-dot" style="background:#ff3366;"></div>
+          <div class="alert-info">
+            <div class="alert-title">${escapeHtml(a.nombre)} (+${a.puntos || 0} pts)</div>
+            <div class="alert-domain">${escapeHtml(a.motivo || a.descripcion || 'Alerta activa')}</div>
+          </div>
+        `;
+        activityList.appendChild(row);
+      });
+    }
+  }
+
+  // 6. Quick Service Revocation
+  const svcList = document.getElementById('quick-services-list');
+  if (svcList && res.grupos && res.grupos.length > 0) {
+    svcList.innerHTML = '';
+    res.grupos.slice(0, 5).forEach(g => {
+      const isCrit = g.critico || g.riesgo === 'Alto';
+      const row = document.createElement('div');
+      row.className = 'service-row';
+      row.innerHTML = `
+        <div class="service-info">
+          <div class="service-logo" style="color:var(--cyan); font-weight:700;">${escapeHtml((g.nombre || 'W')[0].toUpperCase())}</div>
+          <div class="service-meta">
+            <div class="s-name">${escapeHtml(g.nombre || 'Servicio')}</div>
+            <div class="s-count">${g.cookies || 1} cookies (${escapeHtml(g.categoria || 'Auth')})</div>
+          </div>
+        </div>
+        <div class="service-actions">
+          <span class="risk-pill ${isCrit ? 'risk-high' : 'risk-none'}">${isCrit ? 'Riesgo alto' : 'Monitoreado'}</span>
+          <button class="btn-revoke-sm" onclick="triggerRevokeService('${escapeHtml(g.nombre || '')}')">Revoke</button>
+        </div>
+      `;
+      svcList.appendChild(row);
+    });
+  }
+
+  // 7. Incidents Tab & Badge
+  const incContainer = document.getElementById('incidents-container');
+  if (incContainer) {
+    incContainer.innerHTML = '';
+    (res.indicadores || []).forEach(ind => {
+      const isAlert = ind.estado === 'alerta';
+      const card = document.createElement('div');
+      card.style.cssText = `background:var(--bg-card); border:1px solid ${isAlert ? 'rgba(255,51,102,0.35)' : 'var(--border)'}; border-radius:10px; padding:16px; margin-bottom:12px;`;
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span class="pill-badge ${isAlert ? 'pill-high' : 'pill-low'}">${ind.estado.toUpperCase()}</span>
+          <span style="font-weight:700; color:${isAlert ? 'var(--pink)' : 'var(--green)'};">+${ind.puntos || 0} pts</span>
+        </div>
+        <h3 style="font-size:15px; font-weight:700; color:var(--text-main); margin-bottom:6px;">${escapeHtml(ind.nombre)}</h3>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:6px;">${escapeHtml(ind.motivo || ind.descripcion || 'Sin anomalías.')}</p>
+      `;
+      incContainer.appendChild(card);
+    });
+  }
+
+  const badge = document.getElementById('incident-badge');
+  if (badge) {
+    const alertCount = (res.indicadores || []).filter(i => i.estado === 'alerta').length;
+    badge.innerText = alertCount;
+    badge.style.display = alertCount > 0 ? 'inline-block' : 'none';
+  }
+  renderAllSessions(res);
+  if (res.playbooks) renderPlaybooks(res.playbooks);
 }
 
 function escapeHtml(str) {
@@ -1677,6 +1886,13 @@ function handleGlobalSearch(q) {
 
 window.addEventListener('DOMContentLoaded', async () => {
   const init = await callApi('get_initial_data');
+  if (init && init.theme) {
+    const t = (init.theme === 'claro' || init.theme === 'light') ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) btn.innerText = t === 'dark' ? '☀️' : '🌙';
+  }
+  if (init && init.playbooks) renderPlaybooks(init.playbooks);
   if (init && init.warning_old) {
     const w = document.getElementById('warning-banner-container');
     w.innerHTML = `<div style="background:#78350f; color:#fef3c7; padding:10px 24px; font-size:12px; display:flex; justify-content:space-between;">
@@ -1693,14 +1909,28 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 
 
-def launch(debug: bool = False) -> int:
-    """Lanza la ventana nativa Cyber SOC idéntica al diseño oficial."""
+def launch(debug: bool = False, browser_mode: bool = False) -> int:
+    """Lanza la consola Cyber SOC idéntica al diseño oficial (ventana nativa o navegador)."""
     api = BridgeApi()
     html_content = get_dashboard_html()
 
     server = LocalDashboardServer(api, html_content)
     port = server.start()
     local_url = f"http://127.0.0.1:{port}/"
+
+    if browser_mode:
+        print(f"🛡️  CookieGuard v{VERSION} · Consola Cyber SOC iniciada:")
+        print(f"    URL Local: {local_url}")
+        print("    Abriendo en tu navegador predeterminado... (Pulsa Ctrl+C para detener)")
+        webbrowser.open(local_url)
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nDeteniendo servidor local de CookieGuard...")
+        finally:
+            server.stop()
+        return 0
 
     try:
         import webview
@@ -1716,16 +1946,16 @@ def launch(debug: bool = False) -> int:
         webview.start(debug=debug)
         return 0
     except Exception as e:
-        print(f"[!] Fallback: abriendo dashboard local en navegador: {e}", file=sys.stderr)
+        print(f"[!] Aviso: abriendo dashboard local en navegador ({e})", file=sys.stderr)
         webbrowser.open(local_url)
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
-            pass
+            print("\nDeteniendo servidor local...")
+        finally:
+            server.stop()
         return 0
-    finally:
-        server.stop()
 
 
 if __name__ == "__main__":

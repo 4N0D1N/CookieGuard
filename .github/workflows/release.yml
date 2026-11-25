@@ -85,6 +85,7 @@ jobs:
           cp README.md package_win/ 2>/dev/null || true
           cp "Rescate-USB.cmd" package_win/ 2>/dev/null || true
           cp "Analizar ahora.cmd" package_win/ 2>/dev/null || true
+          cp "Abrir-Dashboard-Web.cmd" package_win/ 2>/dev/null || true
           cd package_win
           7z a -tzip "../${{ matrix.pkg_name }}" *
           cd ..
@@ -102,6 +103,7 @@ jobs:
           cp README.md package_linux/ 2>/dev/null || true
           cp rescate-usb.sh package_linux/ 2>/dev/null || true
           cp cookieguard.sh package_linux/ 2>/dev/null || true
+          cp abrir-dashboard-web.sh package_linux/ 2>/dev/null || true
           tar -czvf "${{ matrix.pkg_name }}" -C package_linux .
           sha256sum "${{ matrix.pkg_name }}" > "${{ matrix.pkg_name }}.sha256"
           mkdir -p release_bin

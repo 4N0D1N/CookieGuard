@@ -103,5 +103,54 @@ class TestWebviewApp(unittest.TestCase):
         server.stop()
 
 
+    def test_sanitize_for_json_serialization(self):
+        from cookieguard.webview_app import sanitize_for_json
+        from datetime import datetime, date
+        from pathlib import Path
+
+        sample = {
+            "time": datetime.now(),
+            "day": date.today(),
+            "set_val": {"chrome", "edge"},
+            "path": Path("/tmp/test.db"),
+            "nested": {
+                "inner_time": datetime(2027, 1, 1, 12, 0, 0),
+                "inner_set": {1, 2, 3}
+            }
+        }
+        sanitized = sanitize_for_json(sample)
+        # Must serialize cleanly with standard json
+        dumped = json.dumps(sanitized)
+        self.assertIn("2027-01-01T12:00:00", dumped)
+        self.assertIn("/tmp/test.db", dumped)
+        self.assertIsInstance(sanitized["set_val"], list)
+
+    def test_dashboard_html_no_fake_static_fallbacks(self):
+        html = get_dashboard_html()
+        # Verify initial values are clean / not hardcoded fake counts
+        self.assertIn('id="kpi-total-cookies">0<', html)
+        self.assertIn('id="kpi-at-risk">0<', html)
+        self.assertNotIn('<strong>dtCookie</strong>', html)
+
+
+    def test_revoke_service_flexible_catalog_matching(self):
+        res_exact = self.api.revoke_service("Google", "sesiones")
+        self.assertTrue(res_exact.get("ok"))
+        self.assertIn("myaccount.google.com", res_exact.get("url", ""))
+
+        res_pass = self.api.revoke_service("microsoft", "password")
+        self.assertTrue(res_pass.get("ok"))
+        self.assertTrue(any(domain in res_pass.get("url", "") for domain in ["account.live.com", "account.microsoft.com"]))
+
+        res_oauth = self.api.revoke_service("github", "oauth")
+        self.assertTrue(res_oauth.get("ok"))
+        self.assertIn("github.com", res_oauth.get("url", ""))
+
+    def test_get_playbooks_api(self):
+        pb = self.api.get_playbooks()
+        self.assertIsInstance(pb, list)
+        self.assertGreater(len(pb), 5)
+
+
 if __name__ == "__main__":
     unittest.main()
