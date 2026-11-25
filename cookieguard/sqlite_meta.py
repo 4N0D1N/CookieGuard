@@ -102,30 +102,58 @@ def read_metadata(src: Path, table: str, wanted: list[str]) -> list[dict]:
     bad = [c for c in wanted if c not in ALLOWED_COLUMNS]
     if bad:
         raise ValueError(f"columna no permitida (solo metadatos): {bad}")
-    cp = safe_copy(src)
     try:
-        con = sqlite3.connect(str(cp))
+        cp = safe_copy(src)
         try:
-            existing = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
-            cols = [c for c in wanted if c in existing]
-            if not cols:
-                return []
-            cur = con.execute(f"SELECT {', '.join(cols)} FROM {table}")
-            return [dict(zip(cols, row)) for row in cur]
+            con = sqlite3.connect(str(cp))
+            try:
+                existing = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+                cols = [c for c in wanted if c in existing]
+                if not cols:
+                    return []
+                cur = con.execute(f"SELECT {', '.join(cols)} FROM {table}")
+                return [dict(zip(cols, row)) for row in cur]
+            finally:
+                con.close()
         finally:
-            con.close()
-    finally:
-        cleanup_copy(cp)
+            cleanup_copy(cp)
+    except DbLocked as err:
+        # Fallback de solo lectura inmutable directo si la copia está bloqueada por el navegador activo:
+        try:
+            uri = f"{Path(src).resolve().as_uri()}?mode=ro&immutable=1"
+            con = sqlite3.connect(uri, uri=True)
+            try:
+                existing = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+                cols = [c for c in wanted if c in existing]
+                if not cols:
+                    return []
+                cur = con.execute(f"SELECT {', '.join(cols)} FROM {table}")
+                return [dict(zip(cols, row)) for row in cur]
+            finally:
+                con.close()
+        except Exception:
+            raise err
 
 
 def table_names(path: Path) -> list[str]:
     """Nombres de tabla de una BD (para detectar copias sospechosas). No lee filas."""
-    cp = safe_copy(path)
     try:
-        con = sqlite3.connect(str(cp))
+        cp = safe_copy(path)
         try:
-            return [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+            con = sqlite3.connect(str(cp))
+            try:
+                return [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+            finally:
+                con.close()
         finally:
-            con.close()
-    finally:
-        cleanup_copy(cp)
+            cleanup_copy(cp)
+    except DbLocked as err:
+        try:
+            uri = f"{Path(path).resolve().as_uri()}?mode=ro&immutable=1"
+            con = sqlite3.connect(uri, uri=True)
+            try:
+                return [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+            finally:
+                con.close()
+        except Exception:
+            raise err

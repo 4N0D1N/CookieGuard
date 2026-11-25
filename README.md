@@ -203,11 +203,11 @@ python -m cookieguard clipboard --limpiar
 <summary>🖥️ <b>Manual de la Interfaz Gráfica (GUI) - Explicación de Cada Botón</b></summary>
 <br>
 
-A partir de la versión **2.6.2**, CookieGuard incorpora una consola de escritorio de última generación impulsada por **PyWebView** (`CookieGuard.exe` o `python -m cookieguard`):
+A partir de la versión **2.7.0**, CookieGuard incorpora una consola de escritorio de última generación impulsada por **PyWebView** (`CookieGuard.exe` o `python -m cookieguard`):
 
-### Consola de Escritorio Moderna (PyWebView v2.6.2 · Servidor Local + Cyber SOC / Fluent)
+### Consola de Escritorio Moderna (PyWebView v2.7.0 · Servidor Local + Cyber SOC / Fluent)
 
-La versión **v2.6.2** incorpora una arquitectura de **doble enlace ultra-robusta**:
+La versión **v2.7.0** incorpora una arquitectura de **doble enlace ultra-robusta**:
 - **Servidor Local Loopback (127.0.0.1):** Un microservidor HTTP interno que atiende las solicitudes de la interfaz instantáneamente vía `fetch` asíncrono con cero dependencias externas. Esto garantiza que todos los botones (`Analizar ahora`, `Exportar`, `Canary`, `Playbooks`, `Herramientas`) respondan de inmediato sin retrasos de eventos IPC de WebView2.
 - **Notificaciones Toast en Pantalla:** Cada acción (generar reporte, crear ZIP de incidente, ejecutar persistencia o rearmar trampas) muestra una alerta visual emergente con el resultado y la ruta exacta de los archivos generados.
 - **Fallback Automático en Navegador:** Si el entorno de ejecución carece del runtime WebView2, CookieGuard abre el panel interactivo en el navegador por defecto del sistema manteniendo el 100% de la funcionalidad interactiva.
@@ -485,3 +485,10 @@ Estas funciones añaden capacidad de revisión local y apoyo a respuesta. No sus
 - **Motivo:** reducir errores y llevar a la persona a controles oficiales de revocación.
 
 > **Compatibilidad y validación:** las pruebas unitarias de estas mejoras son independientes del sistema operativo y están preparadas para CI en Windows y Linux. Los scripts generados deben revisarse y probarse primero en modo simulación. No se afirma una prueba manual de la GUI ni de notificaciones nativas en este entorno.
+
+
+### Versión 2.7.0 · Consola Cyber SOC Oficial & Fallback SQLite Inmutable
+
+- **Diseño Cyber SOC de Alta Fidelidad:** Cabecera con estadísticas en tiempo real (*Threats to your data. Stopped here*), buscador rápido, selector de estado global, barra lateral táctica, 4 tarjetas métricas KPI con sparklines, gráfico circular Donut SVG de desglose de riesgo, feed de actividad reciente, tarjetas rápidas de revocación por servicio (Google, Discord, X, GitHub) y tabla completa filtrable de cookies detectadas.
+- **Fallback Inmutable en SQLite (`mode=ro&immutable=1`):** Permite auditar metadatos de cookies incluso cuando Edge o Chrome están abiertos con bloqueo exclusivo de Windows, sin interferir con la navegación ni alterar los archivos.
+- **Acciones Directas:** Botones funcionales para *Scan Now*, *Revoke All*, *Emergency Mode*, revocación individual por proveedor y ejecución de playbooks oficiales.
