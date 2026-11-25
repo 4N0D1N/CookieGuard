@@ -1,4 +1,4 @@
-"""CookieGuard v2.7.1 · Consola de escritorio Cyber SOC idéntica al diseño oficial."""
+"""CookieGuard v2.7.2 · Consola de escritorio Cyber SOC idéntica al diseño oficial."""
 from __future__ import annotations
 
 import http.server
@@ -246,6 +246,55 @@ class LocalDashboardServer:
                     self.send_header("Content-Length", str(len(html_bytes)))
                     self.end_headers()
                     self.wfile.write(html_bytes)
+                elif self.path in ("/informe", "/informe.html", "/report", "/report.html"):
+                    try:
+                        from . import reports, engine
+                        res = api_ref.last_res or engine.run_analysis()
+                        raw_html = reports.build_html(res)
+                        print_banner = '''
+<div id="cg-print-bar" style="position: sticky; top: 0; z-index: 99999; background: #0b1325; color: #f8fafc; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00e5ff; box-shadow: 0 4px 20px rgba(0,0,0,0.5); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <span style="font-size: 1.4rem;">🛡️</span>
+    <div>
+      <strong style="color: #00e5ff; font-size: 1.05rem;">CookieGuard · Informe Forense y Metadatos de Sesión</strong>
+      <div style="font-size: 0.8rem; color: #94a3b8;">Documento local sin telemetría • Listo para imprimir o guardar en PDF</div>
+    </div>
+  </div>
+  <div style="display: flex; gap: 12px;">
+    <button onclick="window.print()" style="background: linear-gradient(135deg, #0066ff, #00e5ff); color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(0,229,255,0.3);">
+      🖨️ Guardar como PDF / Imprimir
+    </button>
+    <button onclick="window.close()" style="background: rgba(255,255,255,0.1); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+      Cerrar pestaña
+    </button>
+  </div>
+</div>
+<style>
+@media print {
+  #cg-print-bar { display: none !important; }
+  body { background: #ffffff !important; color: #0f172a !important; }
+  .card, table, tr { break-inside: avoid; page-break-inside: avoid; }
+  @page { margin: 1.5cm; size: A4 portrait; }
+}
+</style>
+'''
+                        if "<body>" in raw_html:
+                            full_report = raw_html.replace("<body>", "<body>" + print_banner, 1)
+                        else:
+                            full_report = print_banner + raw_html
+                        rep_bytes = full_report.encode("utf-8")
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/html; charset=utf-8")
+                        self.send_header("Content-Length", str(len(rep_bytes)))
+                        self.end_headers()
+                        self.wfile.write(rep_bytes)
+                    except Exception as e_rep:
+                        err_bytes = f"<h3>Error generando informe: {e_rep}</h3>".encode("utf-8")
+                        self.send_response(500)
+                        self.send_header("Content-Type", "text/html; charset=utf-8")
+                        self.send_header("Content-Length", str(len(err_bytes)))
+                        self.end_headers()
+                        self.wfile.write(err_bytes)
                 else:
                     self.send_response(404)
                     self.end_headers()
@@ -1170,6 +1219,7 @@ body {
         <div class="hero-actions">
           <div class="hero-btn-row">
             <button class="btn-scan" id="btn-scan-now" onclick="triggerScan()">🔍 Scan Now</button>
+            <button class="btn-outline" onclick="window.open('/informe', '_blank')" title="Abrir informe forense completo en otra pestaña listo para PDF">📄 Informe PDF</button>
             <button class="btn-outline" onclick="triggerRevokeAll()">⊗ Revoke All</button>
             <button class="btn-outline btn-emergency" onclick="triggerEmergencyMode()">⚡ Emergency Mode</button>
           </div>

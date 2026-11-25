@@ -91,6 +91,12 @@ class TestWebviewApp(unittest.TestCase):
         res_text = urllib.request.urlopen(req).read().decode("utf-8")
         self.assertIn("CookieGuard", res_text)
 
+        # Test GET /informe (report in new tab)
+        req_rep = urllib.request.Request(f"{base}/informe")
+        rep_text = urllib.request.urlopen(req_rep).read().decode("utf-8")
+        self.assertIn("Informe Forense", rep_text)
+        self.assertIn("window.print()", rep_text)
+
         # Test POST /api/get_initial_data
         req = urllib.request.Request(
             f"{base}/api/get_initial_data",
