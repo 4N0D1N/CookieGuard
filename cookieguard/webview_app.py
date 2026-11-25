@@ -1130,6 +1130,69 @@ body {
 .pill-medium { background: rgba(255, 159, 28, 0.15); color: var(--orange); border: 1px solid rgba(255, 159, 28, 0.3); }
 .pill-low { background: rgba(0, 229, 255, 0.15); color: var(--cyan); border: 1px solid rgba(0, 229, 255, 0.3); }
 
+/* COOKIE INFO MODAL & BUTTON */
+.btn-info-cookie {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--cyan);
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.btn-info-cookie:hover {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: var(--cyan);
+  color: #fff;
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 9, 20, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cookie-modal-card {
+  background: #0c1322;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.7), 0 0 35px rgba(0, 229, 255, 0.12);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px;
+  color: var(--text-main);
+  transform: translateY(12px) scale(0.97);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-overlay.active .cookie-modal-card {
+  transform: translateY(0) scale(1);
+}
+
 /* TOASTS */
 #toast-container {
   position: fixed;
@@ -1572,6 +1635,13 @@ body {
 
 <div id="toast-container"></div>
 
+<!-- MODAL DETALLE DE COOKIE -->
+<div id="cookie-info-modal" class="modal-overlay" onclick="closeCookieModal(event)">
+  <div class="cookie-modal-card" id="cookie-info-modal-card" onclick="event.stopPropagation()">
+    <div id="cookie-info-modal-content"></div>
+  </div>
+</div>
+
 <script>
 // BRIDGE COMUNICACIÓN UNIVERSAL (FETCH LOOPBACK + PYWEBVIEW)
 async function callApi(method, ...args) {
@@ -1675,7 +1745,8 @@ function renderAllSessions(res) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted);">Sin metadatos de cookies de sesión detectados. Cierra y reabre el navegador si esperabas encontrar una sesión activa.</td></tr>';
     return;
   }
-  items.forEach(c => {
+  window._detectedCookies = items;
+    items.forEach((c, idx) => {
     const name = c.name || c.nombre || 'Cookie';
     const host = c.host || (Array.isArray(c.dominios) ? c.dominios.join(', ') : c.dominio) || '';
     const svc = c.servicio_id || c.servicio || c.nombre || 'Web';
@@ -1823,7 +1894,12 @@ function updateDashboardUI(res) {
       const newBadge = isNew ? '<span class="badge-new-session" style="background:#10b98126; color:#10b981; border:1px solid #10b981; border-radius:4px; font-size:10px; font-weight:700; padding:1px 5px; margin-left:6px;">NUEVA</span>' : '';
       tr.innerHTML = `
         <td><input type="checkbox" class="row-check"></td>
-        <td><strong>${escapeHtml(name)}</strong>${newBadge}</td>
+        <td>
+          <div style="display:inline-flex; align-items:center; gap:6px;">
+            <strong>${escapeHtml(name)}</strong>${newBadge}
+            <button class="btn-info-cookie" onclick="openCookieDetailsModal(${idx})" title="Explicación técnica y propósito de ${escapeHtml(name)}" aria-label="Detalles de ${escapeHtml(name)}">ⓘ</button>
+          </div>
+        </td>
         <td>${escapeHtml(host)}</td>
         <td>${escapeHtml(svc)}</td>
         <td><span class="pill-badge ${pillClass}">${riskLabel}</span></td>
@@ -2062,6 +2138,157 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Auto-scan al inicio
   triggerScan();
 });
+
+// EXPLICACIÓN Y DETALLE DE COOKIES (MODAL ⓘ)
+function getCookieExplanation(c) {
+  const name = (c.name || c.nombre || '').toLowerCase();
+  const host = (c.host || (c.dominios ? Array.from(c.dominios).join(', ') : c.dominio) || '').toLowerCase();
+  const svc = (c.servicio_id || c.nombre || '').toLowerCase();
+  const motivo = c.motivo || '';
+  const isHigh = c.confianza === 'Alta' || c.critico || c.riesgo === 'Alto';
+  const isMed = c.confianza === 'Media' || c.riesgo === 'Medio';
+
+  let role = '';
+  let riskExplanation = '';
+  let impactText = '';
+  let isRealAuthToken = false;
+
+  if (name === 'logged_in') {
+    role = 'Indicador de estado de navegación (Flag público)';
+    riskExplanation = 'GitHub asigna esta cookie a cualquier visitante de github.com. Si no has iniciado sesión vale "no", y al conectarte cambia a "yes".';
+    impactText = 'ℹ️ No es una credencial de acceso. Nadie puede suplantar tu cuenta de GitHub únicamente con esta cookie. El token real de sesión es user_session.';
+  } else if (name === 'dotcom_user') {
+    role = 'Nombre de usuario público en GitHub';
+    riskExplanation = 'Almacena el alias público del usuario para personalizar la interfaz.';
+    impactText = 'ℹ️ No contiene secretos de sesión ni contraseñas.';
+  } else if (name === 'user_session' || name === '__host-user_session_same_site') {
+    role = 'Token principal de sesión autenticada de GitHub';
+    riskExplanation = 'Cookie crítica de autenticación. Mantiene el acceso a tus repositorios y cuenta.';
+    impactText = '🚨 Token crítico activo. Si un atacante roba esta cookie, podría acceder a tu cuenta de GitHub sin contraseña hasta revocarla.';
+    isRealAuthToken = true;
+  } else if (name === 'buid' && (host.includes('microsoft') || host.includes('live.com'))) {
+    role = 'Contexto de cuenta Microsoft / Azure Entra ID';
+    riskExplanation = 'Identificador de contexto de inicio de sesión utilizado en login.microsoftonline.com.';
+    impactText = '⚠️ Vinculado a flujos de Single Sign-On (SSO). Si sospechas compromiso, revoca sesiones en mysignins.microsoft.com.';
+    isRealAuthToken = true;
+  } else if (name.startsWith('estsauth') || name === 'msauth' || name === 'rpssecauth') {
+    role = 'Token de autenticación federada Microsoft / Office 365';
+    riskExplanation = 'Cookie crítica del catálogo oficial de inicio de sesión de Microsoft.';
+    impactText = '🚨 Sesión activa. Permite acceso directo al correo, OneDrive y servicios Microsoft sin contraseña.';
+    isRealAuthToken = true;
+  } else if (name === 'sid' || name === 'hsid' || name === 'ssid' || name.includes('psid')) {
+    role = 'Token maestro de sesión Google / Gmail';
+    riskExplanation = 'Cookie de catálogo que autoriza las peticiones autenticadas en cuentas Google.';
+    impactText = '🚨 Token crítico. Permite suplantar la sesión en Gmail, Drive y YouTube si no se revoca en myaccount.google.com.';
+    isRealAuthToken = true;
+  } else if (name.includes('session') || name.includes('sess') || name.includes('auth') || name.includes('token') || name.includes('jwt') || name.includes('login')) {
+    role = 'Identificador / token de sesión web';
+    riskExplanation = motivo ? ('Detectado por regla: ' + motivo) : ('El nombre coincide con patrones de sesión de usuario (' + (c.name || '') + ').');
+    if (isHigh || isMed) {
+      impactText = '⚠️ Podría conceder acceso autenticado al portal ' + host + '. Revoca la sesión si no reconoces la actividad.';
+      isRealAuthToken = true;
+    } else {
+      impactText = 'ℹ️ Cookie de persistencia o sesión de navegación temporal.';
+    }
+  } else {
+    role = 'Cookie funcional / preferencias web';
+    riskExplanation = motivo || ('Registrada durante la navegación en ' + host + '.');
+    impactText = 'ℹ️ Utilizada habitualmente para almacenar preferencias, idioma o estado visual.';
+  }
+
+  return { role, riskExplanation, impactText, isRealAuthToken };
+}
+
+function openCookieDetailsModal(idx) {
+  const c = (window._detectedCookies || [])[idx];
+  if (!c) return;
+
+  const name = c.name || c.nombre || 'Cookie';
+  const host = c.host || (c.dominios ? Array.from(c.dominios).join(', ') : c.dominio) || '';
+  const svc = c.servicio_id || c.nombre || 'Web';
+  const isHigh = c.confianza === 'Alta' || c.critico || c.riesgo === 'Alto';
+  const isMed = c.confianza === 'Media' || c.riesgo === 'Medio';
+  const riskLabel = isHigh ? 'High' : (isMed ? 'Medium' : 'Low');
+  const pillClass = isHigh ? 'pill-high' : (isMed ? 'pill-medium' : 'pill-low');
+  const cat = c.categoria || (c.httponly ? 'Protected' : 'Authentication');
+  const exp = c.expires ? String(c.expires).slice(0, 19).replace('T', ' ') : (c.caducidad_max ? String(c.caducidad_max).slice(0, 19).replace('T', ' ') : 'Sesión de navegación');
+  const isHttpOnly = Boolean(c.httponly || c.is_httponly);
+  const isSecure = Boolean(c.secure || c.is_secure);
+  const sameSite = c.samesite || 'Lax';
+
+  const expl = getCookieExplanation(c);
+
+  const modal = document.getElementById('cookie-info-modal');
+  const content = document.getElementById('cookie-info-modal-content');
+
+  content.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <h3 style="font-size:18px; font-weight:700; color:#fff; margin:0; word-break:break-all;">${escapeHtml(name)}</h3>
+          <span class="pill-badge ${pillClass}">${riskLabel}</span>
+        </div>
+        <div style="font-size:13px; color:var(--text-muted);">${escapeHtml(host)} · Servicio: <strong style="color:var(--text-main);">${escapeHtml(svc)}</strong></div>
+      </div>
+      <button onclick="closeCookieModal()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer; line-height:1; padding:2px 6px;" title="Cerrar">✕</button>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px; font-size:13px; line-height:1.5;">
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px;">
+        <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:var(--cyan); letter-spacing:0.5px; margin-bottom:4px;">Rol y Propósito</div>
+        <div style="color:#fff; font-weight:600; margin-bottom:4px;">${escapeHtml(expl.role)}</div>
+        <div style="color:var(--text-muted); font-size:12px;">${escapeHtml(expl.riskExplanation)}</div>
+      </div>
+
+      <div style="background:${expl.isRealAuthToken ? 'rgba(255,51,102,0.08)' : 'rgba(0,229,255,0.06)'}; border:1px solid ${expl.isRealAuthToken ? 'rgba(255,51,102,0.25)' : 'rgba(0,229,255,0.2)'}; border-radius:8px; padding:12px;">
+        <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:${expl.isRealAuthToken ? 'var(--pink)' : 'var(--cyan)'}; letter-spacing:0.5px; margin-bottom:4px;">Impacto en caso de exfiltración</div>
+        <div style="color:#f8fafc; font-size:12px;">${escapeHtml(expl.impactText)}</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px;">
+        <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px; margin-bottom:8px;">Protecciones del Navegador</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12px;">
+          <div>
+            <span style="color:var(--text-muted);">HttpOnly:</span>
+            <strong style="color:${isHttpOnly ? '#10b981' : '#f59e0b'}; margin-left:4px;">${isHttpOnly ? '✓ Inmune a XSS' : '✗ Legible por JS'}</strong>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);">Secure:</span>
+            <strong style="color:${isSecure ? '#10b981' : '#f59e0b'}; margin-left:4px;">${isSecure ? '✓ Solo HTTPS' : '✗ Permite HTTP'}</strong>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);">SameSite:</span>
+            <strong style="color:var(--text-main); margin-left:4px;">${escapeHtml(String(sameSite))}</strong>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);">Caducidad:</span>
+            <strong style="color:var(--text-main); margin-left:4px;">${escapeHtml(String(exp))}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);">
+        <button class="btn-outline" style="font-size:12px; padding:6px 14px;" onclick="closeCookieModal()">Entendido</button>
+        <button class="btn-revoke-sm" style="font-size:12px; padding:7px 16px;" onclick="triggerRevokeService('${escapeHtml(svc)}'); closeCookieModal();">
+          Revocar sesiones en ${escapeHtml(svc)}
+        </button>
+      </div>
+    </div>
+  `;
+
+  modal.classList.add('active');
+}
+
+function closeCookieModal(e) {
+  if (e && e.target && e.target.id !== 'cookie-info-modal' && e.target.tagName !== 'BUTTON' && !e.target.closest('button')) return;
+  const modal = document.getElementById('cookie-info-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeCookieModal();
+});
+
 </script>
 </body>
 </html>"""

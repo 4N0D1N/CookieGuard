@@ -158,9 +158,6 @@ class TestWebviewApp(unittest.TestCase):
         self.assertGreater(len(pb), 5)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
     def test_dashboard_realtime_canary_and_diff(self):
         from cookieguard.webview_app import BridgeApi, LocalDashboardServer
         api = BridgeApi()
@@ -181,9 +178,30 @@ if __name__ == "__main__":
         self.assertIn("alerta_activa", canary)
         
         # Verify HTML contains new controls
-        server = LocalDashboardServer(api)
-        html = server.render_html()
+        html = get_dashboard_html()
+        server = LocalDashboardServer(api, html)
         self.assertIn("canary-emergency-alert-container", html)
         self.assertIn("checkCanaryAlertRealtime", html)
         self.assertIn("q-pill", html)
         self.assertIn("setQuickFilter", html)
+
+    def test_cookie_info_modal_and_classification(self):
+        """Verifica que el dashboard web incluya el modal de información ⓘ y que logged_in no sea falso positivo de alto riesgo."""
+        from cookieguard import classifier, webview_app
+        
+        # Test clasificación de logged_in de GitHub
+        rec_gh = {"host": ".github.com", "name": "logged_in", "httponly": True, "secure": True}
+        ok, conf, svc, why = classifier.classify(rec_gh)
+        self.assertTrue(ok)
+        self.assertEqual(conf, "Baja")
+        self.assertIn("indicador de estado", why)
+        
+        # Test presencia de componentes en el HTML del dashboard
+        html = webview_app.get_dashboard_html()
+        self.assertIn("btn-info-cookie", html)
+        self.assertIn("cookie-info-modal", html)
+        self.assertIn("openCookieDetailsModal", html)
+
+
+if __name__ == "__main__":
+    unittest.main()

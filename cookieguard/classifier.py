@@ -56,6 +56,9 @@ def classify(rec: dict):
     name = rec["name"] or ""
     base = _PREFIX_RE.sub("", name)
     if svc:
+        # Indicadores de estado de navegación (no son secretos de autenticación)
+        if name.lower() in {"logged_in", "dotcom_user", "has_recent_activity"}:
+            return True, "Baja", svc, "indicador de estado de navegación (no confiere acceso por sí sola)"
         known = {c.lower() for c in svc.get("cookies", [])}
         if name.lower() in known or base.lower() in known or any(
                 k.endswith("-") and name.lower().startswith(k) for k in known):

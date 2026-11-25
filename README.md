@@ -2,7 +2,7 @@
 
 > **Auditor forense y escudo defensivo local contra infostealers. Monitoriza, detecta y responde al secuestro de sesiones en navegadores, aplicaciones de escritorio y portapapeles. 100% Local-first, sin telemetría y sin dependencias externas obligatorias.**
 
-![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.7.3-blue)
+![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.7.4-blue)
 [![CI CookieGuard](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/4N0D1N/CookieGuard/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Plataformas](https://img.shields.io/badge/Plataformas-Windows%2010%2F11%20%7C%20Linux-brightgreen)
@@ -486,6 +486,16 @@ Estas funciones añaden capacidad de revisión local y apoyo a respuesta. No sus
 
 > **Compatibilidad y validación:** las pruebas unitarias de estas mejoras son independientes del sistema operativo y están preparadas para CI en Windows y Linux. Los scripts generados deben revisarse y probarse primero en modo simulación. No se afirma una prueba manual de la GUI ni de notificaciones nativas en este entorno.
 
+
+### Versión 2.7.4 · Iconos de Información ⓘ por Cookie, Explicación de Riesgo y Modo Navegador por Defecto
+
+- **Iconos Informativos ⓘ en la Tabla de Cookies:** Cada fila de cookie detectada incorpora ahora un botón `ⓘ` interactivo que despliega una ventana modal con:
+  - **Rol y propósito real:** Explica claramente si se trata de un token de sesión activo, un indicador de estado público o una cookie de preferencia/telemetría.
+  - **Motivo técnico de clasificación:** Detalla por qué se le asignó riesgo Alto, Medio o Bajo (catálogo de autenticación, coincidencia heurística con patrones de sesión o banderas HttpOnly/Secure).
+  - **Impacto de exfiltración:** Aclara de forma pedagógica si la sustracción de esa cookie permitiría suplantar la cuenta o si es inofensiva.
+  - **Banderas de protección del navegador:** Estado de HttpOnly (inmunidad XSS), Secure (solo HTTPS), directiva SameSite y fecha exacta de caducidad.
+- **Afinamiento de Falsos Positivos en GitHub:** Cookies de estado público de GitHub como `logged_in` (cuyo valor es `no` al visitar GitHub sin sesión) y `dotcom_user` se catalogan ahora con riesgo bajo e informativo, eliminando alarmas innecesarias al navegar por repositorios.
+- **Modo Navegador Web por Defecto:** Al ejecutar `CookieGuard.exe` o `Abrir-Dashboard-Web.cmd`, se abre directamente tu navegador habitual (Edge, Chrome, Firefox) con el diseño Cyber SOC fluido de alta fidelidad, eliminando dependencias de componentes antiguos o ventanas heredadas.
 
 ### Versión 2.7.3 · Alerta Canary en Vivo, Diff Histórico & Filtros Dinámicos
 

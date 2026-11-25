@@ -311,16 +311,18 @@ def main(argv=None):
     from .common import VERSION
 
     if args.cmd in (None, "gui", "dashboard", "web"):
-        browser_mode = (args.cmd in ("dashboard", "web")) or any(flag in sys.argv for flag in ("--browser", "--web", "--navegador"))
+        # Por defecto abre en el navegador web moderno (Edge, Chrome, Firefox) para garantizar compatibilidad visual total
+        desktop_explicit = any(flag in sys.argv for flag in ("--desktop", "--native", "--ventana"))
+        browser_mode = not desktop_explicit
         # Flag opcional para forzar la interfaz clásica de Tkinter
-        if not browser_mode and any(flag in sys.argv for flag in ("--classic", "--tkinter", "--legacy")):
+        if any(flag in sys.argv for flag in ("--classic", "--tkinter", "--legacy")):
             try:
                 from . import gui
                 return gui.main()
             except Exception as e:
                 print(f"Aviso: Interfaz clásica no disponible ({e}).")
 
-        # Lanzador predeterminado: Interfaz de escritorio moderna con PyWebView o navegador local
+        # Lanzador predeterminado: Navegador local o PyWebView
         try:
             from . import webview_app
             return webview_app.launch(debug="--debug" in sys.argv, browser_mode=browser_mode)
